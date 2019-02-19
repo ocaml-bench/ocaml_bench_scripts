@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 
 import argparse
+import inspect
 import os
 import subprocess
 import yaml
 
-PROJ = '/Users/ctk21/proj/'
-REPO = os.path.join(PROJ, 'ocaml')
-SCRIPTDIR = os.path.join(PROJ, 'ctk21_bench_scripts')
-OPERF_BINARY = os.path.join(PROJ, 'operf-micro/test/bin/operf-micro')
+
+def get_script_dir():
+ 	return os.path.dirname(inspect.getabsfile(get_script_dir))
+
+SCRIPTDIR = get_script_dir()
+REPO = os.path.join(SCRIPTDIR, 'ocaml')
+OPERF_BINARY = os.path.join(SCRIPTDIR, 'operf-micro/opt/bin/operf-micro')
 ENVIRONMENT = 'macbook'
 
 parser = argparse.ArgumentParser(description='Build ocaml binaries and benchmarks for a backfill')
@@ -17,6 +21,7 @@ parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to 
 parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
 parser.add_argument('--lax_mkdir', action='store_true', default=False)
 parser.add_argument('--environment', type=str, default=ENVIRONMENT)
+parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo', default=REPO)
 parser.add_argument('--branch', type=str, default='4.07')
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
@@ -74,7 +79,7 @@ for (n, h) in enumerate(hashes):
 	builddir = os.path.join(hashdir, 'ocaml_build')
 	build_context_fname = os.path.join(builddir, 'build_context.conf')
 	if 'build' in args.run_stages:
-		shell_exec('%s/build_ocaml_hash.py %s %s %s'%(SCRIPTDIR, h, builddir, verbose_args))
+		shell_exec('%s/build_ocaml_hash.py --repo %s %s %s %s'%(SCRIPTDIR, args.repo, h, builddir, verbose_args))
 
 		# output build context
 		build_context = {

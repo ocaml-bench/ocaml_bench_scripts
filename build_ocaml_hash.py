@@ -4,8 +4,7 @@ import argparse
 import os
 import subprocess
 
-#REPO='https://github.com/ocaml/ocaml'
-REPO='file:///Users/ctk21/proj/ocaml_repo_clean/'
+REPO='https://github.com/ocaml/ocaml'
 
 parser = argparse.ArgumentParser(description='Build a given ocaml compiler repo hash')
 parser.add_argument('hash', type=str, help='commit hash to pull')
