@@ -23,6 +23,7 @@ parser.add_argument('--lax_mkdir', action='store_true', default=False)
 parser.add_argument('--environment', type=str, default=ENVIRONMENT)
 parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo', default=REPO)
 parser.add_argument('--branch', type=str, default='4.07')
+parser.add_argument('-j', '--jobs', type=int, help='number of concurrent jobs during build', default=1)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
@@ -79,7 +80,7 @@ for (n, h) in enumerate(hashes):
 	builddir = os.path.join(hashdir, 'ocaml_build')
 	build_context_fname = os.path.join(builddir, 'build_context.conf')
 	if 'build' in args.run_stages:
-		shell_exec('%s/build_ocaml_hash.py --repo %s %s %s %s'%(SCRIPTDIR, args.repo, h, builddir, verbose_args))
+		shell_exec('%s/build_ocaml_hash.py --repo %s -j %d %s %s %s'%(SCRIPTDIR, args.repo, args.jobs, h, builddir, verbose_args))
 
 		# output build context
 		build_context = {

@@ -9,6 +9,7 @@ REPO='https://github.com/ocaml/ocaml'
 parser = argparse.ArgumentParser(description='Build a given ocaml compiler repo hash')
 parser.add_argument('hash', type=str, help='commit hash to pull')
 parser.add_argument('basedir', type=str, help='location to put the source and the build')
+parser.add_argument('-j', '--jobs', type=int, help='number of jobs for make in build', default=1)
 parser.add_argument('--repo', type=str, help='alternate URL for the repo', default=REPO)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
@@ -38,7 +39,7 @@ shell_exec('git checkout %s'%args.hash)
 
 # build the source
 shell_exec('./configure --prefix %s'%basedir)
-shell_exec('make world')
-shell_exec('make world.opt')
+shell_exec('make world -j %d'%args.jobs)
+shell_exec('make world.opt -j %d'%args.jobs)
 shell_exec('make install')
 
