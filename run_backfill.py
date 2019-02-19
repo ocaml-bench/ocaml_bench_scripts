@@ -17,12 +17,14 @@ ENVIRONMENT = 'macbook'
 
 parser = argparse.ArgumentParser(description='Build ocaml binaries and benchmarks for a backfill')
 parser.add_argument('outdir', type=str, help='directory of output')
+parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version, status_success, all)', default='version_tags')
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
 parser.add_argument('--lax_mkdir', action='store_true', default=False)
 parser.add_argument('--environment', type=str, default=ENVIRONMENT)
 parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo', default=REPO)
 parser.add_argument('--branch', type=str, default='4.07')
+parser.add_argument('--github_oauth_token', type=str, default=None)
 parser.add_argument('-j', '--jobs', type=int, help='number of concurrent jobs during build', default=1)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
@@ -55,16 +57,44 @@ shell_exec('mkdir -p %s'%outdir, check=not args.lax_mkdir)
 ## generate list of hash commits
 os.chdir(REPO)
 shell_exec('git checkout %s'%args.branch)
-proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' | grep VERSION | grep %s'%args.branch, capture_output=True)
-hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
-#proc_output = shell_exec('git show-ref --tags | grep refs/tags/%s'%args.branch, capture_output=True)
-#hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')
+if args.commit_choice_method == 'version_tags':
+	proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' | grep VERSION | grep %s'%args.branch, capture_output=True)
+	hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
+	
+	hashes = [hc.split(' ')[0] for hc in hash_comments]
+	if args.verbose:
+		for hc in hash_comments:
+			print(hc)
 
-hashes = [hc.split(' ')[0] for hc in hash_comments]
-if args.verbose:
-	for hc in hash_comments:
-		print(hc)
+	#proc_output = shell_exec('git show-ref --tags | grep refs/tags/%s'%args.branch, capture_output=True)
+	#hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')
+elif args.commit_choice_method == 'status_success':
+	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', capture_output=True)
+	all_hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
+
+	def get_hash_status(h):
+		curl_xtra_args = '-s'
+		if args.github_oauth_token is not None:
+			curl_xtra_args = curl_xtra_args + ' -H "Authorization: token %s"'%args.github_oauth_token
+		proc_output = shell_exec('curl %s https://api.github.com/repos/ocaml/ocaml/commits/%s/status | jq .state'%(curl_xtra_args, h), capture_output=True)
+		return proc_output.stdout.decode('utf-8').strip().strip('"')
+		
+	hashes = []
+	for h in all_hashes:
+		state = get_hash_status(h)
+		if args.verbose: print('%s is state of %s'%(state, h))
+		if state == 'success':
+			hashes.append(h)
+
+elif args.commit_choice_method  == 'all':
+	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', capture_output=True)
+	hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
+
+else:
+	print('Unknown commit choice method "%s"'%args.commit_choice_method)
+	sys.exit(1)
+
 
 verbose_args = ' -v' if args.verbose else ''
 os.chdir(outdir)
