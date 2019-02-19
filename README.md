@@ -8,7 +8,10 @@ Scripts to:
 
 These scripts currently expect a couple of things in some default locations: 
   - an ocaml git tree (to query for tags and hashes) checked out to ocaml:
+    ```console
+	cd <ocaml_bench_scripts location>
     git clone https://github.com/ocaml/ocaml ocaml
+    ```
   - a copy of operf-micro which supports the more_yaml option: 
   	```console
 	cd <ocaml_bench_scripts location>
