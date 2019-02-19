@@ -7,7 +7,6 @@ import yaml
 
 PROJ = '/Users/ctk21/proj/'
 REPO = os.path.join(PROJ, 'ocaml')
-BRANCH = '4.07'
 SCRIPTDIR = os.path.join(PROJ, 'ctk21_bench_scripts')
 OPERF_BINARY = os.path.join(PROJ, 'operf-micro/test/bin/operf-micro')
 ENVIRONMENT = 'macbook'
@@ -18,6 +17,7 @@ parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to 
 parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
 parser.add_argument('--lax_mkdir', action='store_true', default=False)
 parser.add_argument('--environment', type=str, default=ENVIRONMENT)
+parser.add_argument('--branch', type=str, default='4.07')
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
@@ -48,11 +48,11 @@ shell_exec('mkdir -p %s'%outdir, check=not args.lax_mkdir)
 
 ## generate list of hash commits
 os.chdir(REPO)
-shell_exec('git checkout %s'%BRANCH)
-proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' | grep VERSION | grep %s'%BRANCH, capture_output=True)
+shell_exec('git checkout %s'%args.branch)
+proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' | grep VERSION | grep %s'%args.branch, capture_output=True)
 hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
-#proc_output = shell_exec('git show-ref --tags | grep refs/tags/%s'%BRANCH, capture_output=True)
+#proc_output = shell_exec('git show-ref --tags | grep refs/tags/%s'%args.branch, capture_output=True)
 #hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')
 
 hashes = [hc.split(' ')[0] for hc in hash_comments]
@@ -79,7 +79,7 @@ for (n, h) in enumerate(hashes):
 		# output build context
 		build_context = {
 			'commitid': h, 
-			'branch': BRANCH,
+			'branch': args.branch,
 			'project': 'ocaml',
 			'executable': 'vanilla', 
 		}
