@@ -23,8 +23,8 @@ parser.add_argument('--run_stages', type=str, help='stages to run', default='bui
 parser.add_argument('--lax_mkdir', action='store_true', default=False)
 parser.add_argument('--environment', type=str, default=ENVIRONMENT)
 parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo', default=REPO)
-parser.add_argument('--branch', type=str, default='4.07')
-parser.add_argument('--github_oauth_token', type=str, default=None)
+parser.add_argument('--branch', type=str, help='git branch for the compiler', default='4.07')
+parser.add_argument('--github_oauth_token', type=str, help='oauth token for github api', default=None)
 parser.add_argument('-j', '--jobs', type=int, help='number of concurrent jobs during build', default=1)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
