@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import datetime
 import inspect
 import os
 import subprocess
@@ -45,6 +46,8 @@ def write_context(context, fname, verbose=args.verbose):
 		print('writing context to %s: \n%s'%(fname, s))
 	print(s, file=open(fname, 'w'))
 
+
+run_timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
 run_stages = args.run_stages.split(',')
 if args.verbose: print('will run stages: %s'%run_stages)
@@ -110,7 +113,8 @@ for (n, h) in enumerate(hashes):
 	builddir = os.path.join(hashdir, 'ocaml_build')
 	build_context_fname = os.path.join(builddir, 'build_context.conf')
 	if 'build' in args.run_stages:
-		shell_exec('%s/build_ocaml_hash.py --repo %s -j %d %s %s %s'%(SCRIPTDIR, args.repo, args.jobs, h, builddir, verbose_args))
+		log_fname = os.path.join(hashdir, 'build_%s.log'%run_timestamp) 
+		shell_exec('%s/build_ocaml_hash.py --repo %s -j %d %s %s %s &> %s'%(SCRIPTDIR, args.repo, args.jobs, h, builddir, verbose_args, log_fname))
 
 		# output build context
 		build_context = {
@@ -124,7 +128,8 @@ for (n, h) in enumerate(hashes):
 	## run operf for commit
 	operf_micro_dir = os.path.join(hashdir, 'operf-micro')
 	if 'operf' in args.run_stages:
-		shell_exec('%s/run_operf_micro.py %s %s --operf_binary %s %s'%(SCRIPTDIR, os.path.join(builddir, 'bin'), operf_micro_dir, OPERF_BINARY, verbose_args))
+		log_fname = os.path.join(hashdir, 'operf_%s.log'%run_timestamp) 
+		shell_exec('%s/run_operf_micro.py %s %s --operf_binary %s %s &> %s'%(SCRIPTDIR, os.path.join(builddir, 'bin'), operf_micro_dir, OPERF_BINARY, verbose_args, log_fname))
 
 		# output run context
 		run_context = {
@@ -135,4 +140,5 @@ for (n, h) in enumerate(hashes):
 
 	## upload commit
 	if 'upload' in args.run_stages:
-		shell_exec('%s/load_operf_data.py %s %s'%(SCRIPTDIR, operf_micro_dir, verbose_args))
+		upload_fname = os.path.join(hashdir, 'upload_%s.log'%run_timestamp) 
+		shell_exec('%s/load_operf_data.py %s %s &> %s'%(SCRIPTDIR, operf_micro_dir, verbose_args, log_fname))
