@@ -30,7 +30,7 @@ parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
 
-def shell_exec(cmd, verbose=args.verbose, check=True, capture_output=False):
+def shell_exec(cmd, verbose=args.verbose, check=False, capture_output=False):
 	if verbose:
 		print('+ %s'%cmd)
 	
@@ -113,7 +113,10 @@ for (n, h) in enumerate(hashes):
 	build_context_fname = os.path.join(builddir, 'build_context.conf')
 	if 'build' in args.run_stages:
 		log_fname = os.path.join(hashdir, 'build_%s.log'%run_timestamp) 
-		shell_exec('%s/build_ocaml_hash.py --repo %s -j %d %s %s %s &> %s'%(SCRIPTDIR, args.repo, args.jobs, h, builddir, verbose_args, log_fname))
+		completed_proc = shell_exec('%s/build_ocaml_hash.py --repo %s -j %d %s %s %s &> %s'%(SCRIPTDIR, args.repo, args.jobs, h, builddir, verbose_args, log_fname))
+		if completed_proc.returncode != 0:
+			print('ERROR[%d] in build_ocaml_hash for %s (see %s)'%(completed_proc.returncode, h, log_fname))
+			continue
 
 		# output build context
 		build_context = {
@@ -128,7 +131,10 @@ for (n, h) in enumerate(hashes):
 	operf_micro_dir = os.path.join(hashdir, 'operf-micro')
 	if 'operf' in args.run_stages:
 		log_fname = os.path.join(hashdir, 'operf_%s.log'%run_timestamp) 
-		shell_exec('%s/run_operf_micro.py %s %s --operf_binary %s %s &> %s'%(SCRIPTDIR, os.path.join(builddir, 'bin'), operf_micro_dir, OPERF_BINARY, verbose_args, log_fname))
+		completed_proc = shell_exec('%s/run_operf_micro.py %s %s --operf_binary %s %s &> %s'%(SCRIPTDIR, os.path.join(builddir, 'bin'), operf_micro_dir, OPERF_BINARY, verbose_args, log_fname))
+		if completed_proc.returncode != 0:
+			print('ERROR[%d] in run_operf_micro for %s (see %s)'%(completed_proc.returncode, h, log_fname))
+			continue
 
 		# output run context
 		run_context = {
@@ -141,3 +147,6 @@ for (n, h) in enumerate(hashes):
 	if 'upload' in args.run_stages:
 		upload_fname = os.path.join(hashdir, 'upload_%s.log'%run_timestamp) 
 		shell_exec('%s/load_operf_data.py %s %s &> %s'%(SCRIPTDIR, operf_micro_dir, verbose_args, log_fname))
+		if completed_proc.returncode != 0:
+			print('ERROR[%d] in load_operf_data for %s (see %s)'%(completed_proc.returncode, h, upload_fname))
+			continue
