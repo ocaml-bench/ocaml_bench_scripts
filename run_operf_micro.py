@@ -50,6 +50,8 @@ shell_exec(operf_cmd('init --bin-dir %s %s'%(bindir, tag)))
 shell_exec(operf_cmd('build'))
 
 for b in BENCHMARKS:
-	shell_exec(operf_cmd('run %s'%b))
-	shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(outdir, b))))
-
+	try:
+		shell_exec(operf_cmd('run %s'%b))
+		shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(outdir, b))))
+	except:
+		print('ERROR: operf run failed for %s'%b)
