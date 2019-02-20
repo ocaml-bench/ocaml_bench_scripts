@@ -7,9 +7,14 @@ import subprocess
 
 OPERF_BINARY = '/Users/ctk21/proj/operf-micro/test/bin/operf-micro'
 BENCHMARKS = [
-	'sieve', 
-	'lens', 
+	'sieve',
+	'lens',
 	'sequence',
+	'fibonnaci',
+	'fft',
+	'nucleic',
+	'almabench',
+	'format',
 	]
 
 parser = argparse.ArgumentParser(description='Run operf-micro and collate results')
