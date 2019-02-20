@@ -127,14 +127,14 @@ for (n, h) in enumerate(hashes):
 				print('ERROR[%d] in build_ocaml_hash for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 				continue
 
-			# output build context
-			build_context = {
-				'commitid': h,
-				'branch': args.branch,
-				'project': 'ocaml',
-				'executable': 'vanilla',
-			}
-			write_context(build_context, build_context_fname)
+		# output build context
+		build_context = {
+			'commitid': h,
+			'branch': args.branch,
+			'project': 'ocaml_%s'%args.branch,
+			'executable': 'vanilla',
+		}
+		write_context(build_context, build_context_fname)
 
 	## run operf for commit
 	operf_micro_dir = os.path.join(hashdir, 'operf-micro')
@@ -154,7 +154,7 @@ for (n, h) in enumerate(hashes):
 
 	## upload commit
 	if 'upload' in args.run_stages:
-		upload_fname = os.path.join(hashdir, 'upload_%s.log'%run_timestamp)
+		log_fname = os.path.join(hashdir, 'upload_%s.log'%run_timestamp)
 		completed_proc = shell_exec_redirect('%s/load_operf_data.py %s %s'%(SCRIPTDIR, operf_micro_dir, verbose_args), log_fname)
 		if completed_proc.returncode != 0:
 			print('ERROR[%d] in load_operf_data for %s (see %s)'%(completed_proc.returncode, h, upload_fname))
