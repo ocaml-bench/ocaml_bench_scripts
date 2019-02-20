@@ -21,7 +21,6 @@ parser.add_argument('outdir', type=str, help='directory of output')
 parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version, status_success, all)', default='version_tags')
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
-parser.add_argument('--lax_mkdir', action='store_true', default=False)
 parser.add_argument('--environment', type=str, default=ENVIRONMENT)
 parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo', default=REPO)
 parser.add_argument('--branch', type=str, help='git branch for the compiler', default='4.07')
@@ -55,7 +54,7 @@ if args.verbose: print('will run stages: %s'%run_stages)
 ## setup directory
 outdir = os.path.abspath(args.outdir)
 if args.verbose: print('making directory: %s'%outdir)
-shell_exec('mkdir -p %s'%outdir, check=not args.lax_mkdir)
+shell_exec('mkdir -p %s'%outdir)
 
 ## generate list of hash commits
 os.chdir(REPO)
@@ -107,7 +106,7 @@ for (n, h) in enumerate(hashes):
 
 	hashdir = os.path.join(outdir, h)
 	if args.verbose: print('processing to %s'%hashdir)
-	shell_exec('mkdir -p %s'%hashdir, check=not args.lax_mkdir)
+	shell_exec('mkdir -p %s'%hashdir)
 	
 	## run build for commit
 	builddir = os.path.join(hashdir, 'ocaml_build')
