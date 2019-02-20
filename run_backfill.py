@@ -14,6 +14,7 @@ def get_script_dir():
 SCRIPTDIR = get_script_dir()
 REPO = os.path.join(SCRIPTDIR, 'ocaml')
 OPERF_BINARY = os.path.join(SCRIPTDIR, 'operf-micro/opt/bin/operf-micro')
+CODESPEED_URL = 'http://localhost:8000/'
 ENVIRONMENT = 'macbook'
 
 parser = argparse.ArgumentParser(description='Build ocaml binaries, benchmarks and upload them for a backfill')
@@ -25,6 +26,7 @@ parser.add_argument('--environment', type=str, default=ENVIRONMENT)
 parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo', default=REPO)
 parser.add_argument('--branch', type=str, help='git branch for the compiler', default='4.07')
 parser.add_argument('--github_oauth_token', type=str, help='oauth token for github api', default=None)
+parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
 parser.add_argument('-j', '--jobs', type=int, help='number of concurrent jobs during build', default=1)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
@@ -155,7 +157,7 @@ for (n, h) in enumerate(hashes):
 	## upload commit
 	if 'upload' in args.run_stages:
 		log_fname = os.path.join(hashdir, 'upload_%s.log'%run_timestamp)
-		completed_proc = shell_exec_redirect('%s/load_operf_data.py %s %s'%(SCRIPTDIR, operf_micro_dir, verbose_args), log_fname)
+		completed_proc = shell_exec_redirect('%s/load_operf_data.py --codespeed_url %s %s %s'%(SCRIPTDIR, arg.codespeed_url, verbose_args, operf_micro_dir), log_fname)
 		if completed_proc.returncode != 0:
 			print('ERROR[%d] in load_operf_data for %s (see %s)'%(completed_proc.returncode, h, upload_fname))
 			continue
