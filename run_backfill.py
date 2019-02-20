@@ -16,7 +16,7 @@ REPO = os.path.join(SCRIPTDIR, 'ocaml')
 OPERF_BINARY = os.path.join(SCRIPTDIR, 'operf-micro/opt/bin/operf-micro')
 ENVIRONMENT = 'macbook'
 
-parser = argparse.ArgumentParser(description='Build ocaml binaries and benchmarks for a backfill')
+parser = argparse.ArgumentParser(description='Build ocaml binaries, benchmarks and upload them for a backfill')
 parser.add_argument('outdir', type=str, help='directory of output')
 parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version, status_success, all)', default='version_tags')
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
@@ -57,7 +57,7 @@ if args.verbose: print('making directory: %s'%outdir)
 shell_exec('mkdir -p %s'%outdir)
 
 ## generate list of hash commits
-os.chdir(REPO)
+os.chdir(args.repo)
 shell_exec('git checkout %s'%args.branch)
 
 if args.commit_choice_method == 'version_tags':
