@@ -30,14 +30,19 @@ parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
 
-def shell_exec(cmd, verbose=args.verbose, check=False, capture_output=False):
+def shell_exec(cmd, verbose=args.verbose, check=False, stdout=None, stderr=None):
 	if verbose:
 		print('+ %s'%cmd)
+	return subprocess.run(cmd, shell=True, check=check, stdout=stdout, stderr=stderr)
 
-	if capture_output:
-		return subprocess.run(cmd, shell=True, check=check, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-	else:
-		return subprocess.run(cmd, shell=True, check=check)
+
+def shell_exec_redirect(cmd, fname, verbose=args.verbose, check=False):
+	if verbose:
+		print('+ %s [stdout/stderr -> %s]'%(cmd, fname))
+
+	with open(fname, 'w') as f:
+		return shell_exec(cmd, verbose=False, check=check, stdout=f, stderr=subprocess.STDOUT)
+
 
 def write_context(context, fname, verbose=args.verbose):
 	s = yaml.dump(context, default_flow_style=False)
@@ -61,7 +66,7 @@ os.chdir(args.repo)
 shell_exec('git checkout %s'%args.branch)
 
 if args.commit_choice_method == 'version_tags':
-	proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' | grep VERSION | grep %s'%args.branch, capture_output=True)
+	proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' | grep VERSION | grep %s'%args.branch, stdout=subprocess.PIPE)
 	hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	hashes = [hc.split(' ')[0] for hc in hash_comments]
@@ -69,17 +74,15 @@ if args.commit_choice_method == 'version_tags':
 		for hc in hash_comments:
 			print(hc)
 
-	#proc_output = shell_exec('git show-ref --tags | grep refs/tags/%s'%args.branch, capture_output=True)
-	#hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')
 elif args.commit_choice_method == 'status_success':
-	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', capture_output=True)
+	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', stdout=subprocess.PIPE)
 	all_hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	def get_hash_status(h):
 		curl_xtra_args = '-s'
 		if args.github_oauth_token is not None:
 			curl_xtra_args = curl_xtra_args + ' -H "Authorization: token %s"'%args.github_oauth_token
-		proc_output = shell_exec('curl %s https://api.github.com/repos/ocaml/ocaml/commits/%s/status | jq .state'%(curl_xtra_args, h), capture_output=True)
+		proc_output = shell_exec('curl %s https://api.github.com/repos/ocaml/ocaml/commits/%s/status | jq .state'%(curl_xtra_args, h), stdout=subprocess.PIPE)
 		return proc_output.stdout.decode('utf-8').strip().strip('"')
 
 	hashes = []
@@ -90,7 +93,7 @@ elif args.commit_choice_method == 'status_success':
 			hashes.append(h)
 
 elif args.commit_choice_method  == 'all':
-	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', capture_output=True)
+	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', stdout=subprocess.PIPE)
 	hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 else:
@@ -116,7 +119,7 @@ for (n, h) in enumerate(hashes):
 			print('Skipping build for %s as already built'%h)
 		else:
 			log_fname = os.path.join(hashdir, 'build_%s.log'%run_timestamp)
-			completed_proc = shell_exec('%s/build_ocaml_hash.py --repo %s -j %d %s %s %s &> %s'%(SCRIPTDIR, args.repo, args.jobs, h, builddir, verbose_args, log_fname))
+			completed_proc = shell_exec_redirect('%s/build_ocaml_hash.py --repo %s -j %d %s %s %s'%(SCRIPTDIR, args.repo, args.jobs, h, builddir, verbose_args), log_fname)
 			if completed_proc.returncode != 0:
 				print('ERROR[%d] in build_ocaml_hash for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 				continue
@@ -134,7 +137,7 @@ for (n, h) in enumerate(hashes):
 	operf_micro_dir = os.path.join(hashdir, 'operf-micro')
 	if 'operf' in args.run_stages:
 		log_fname = os.path.join(hashdir, 'operf_%s.log'%run_timestamp)
-		completed_proc = shell_exec('%s/run_operf_micro.py %s %s --operf_binary %s %s &> %s'%(SCRIPTDIR, os.path.join(builddir, 'bin'), operf_micro_dir, OPERF_BINARY, verbose_args, log_fname))
+		completed_proc = shell_exec_redirect('%s/run_operf_micro.py %s %s --operf_binary %s %s'%(SCRIPTDIR, os.path.join(builddir, 'bin'), operf_micro_dir, OPERF_BINARY, verbose_args), log_fname)
 		if completed_proc.returncode != 0:
 			print('ERROR[%d] in run_operf_micro for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 			continue
@@ -149,7 +152,7 @@ for (n, h) in enumerate(hashes):
 	## upload commit
 	if 'upload' in args.run_stages:
 		upload_fname = os.path.join(hashdir, 'upload_%s.log'%run_timestamp)
-		shell_exec('%s/load_operf_data.py %s %s &> %s'%(SCRIPTDIR, operf_micro_dir, verbose_args, log_fname))
+		completed_proc = shell_exec_redirect('%s/load_operf_data.py %s %s'%(SCRIPTDIR, operf_micro_dir, verbose_args), log_fname)
 		if completed_proc.returncode != 0:
 			print('ERROR[%d] in load_operf_data for %s (see %s)'%(completed_proc.returncode, h, upload_fname))
 			continue
