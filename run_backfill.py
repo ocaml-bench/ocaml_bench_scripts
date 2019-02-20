@@ -18,7 +18,7 @@ ENVIRONMENT = 'macbook'
 
 parser = argparse.ArgumentParser(description='Build ocaml binaries, benchmarks and upload them for a backfill')
 parser.add_argument('outdir', type=str, help='directory of output')
-parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version, status_success, all)', default='version_tags')
+parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version_tags, status_success, hash=XXX, all)', default='version_tags')
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
 parser.add_argument('--environment', type=str, default=ENVIRONMENT)
@@ -38,8 +38,8 @@ def shell_exec(cmd, verbose=args.verbose, check=False, stdout=None, stderr=None)
 
 def shell_exec_redirect(cmd, fname, verbose=args.verbose, check=False):
 	if verbose:
-		print('+ %s [stdout/stderr -> %s]'%(cmd, fname))
-
+		print('+ %s'%cmd)
+		print('+ with stdout/stderr -> %s'% fname)
 	with open(fname, 'w') as f:
 		return shell_exec(cmd, verbose=False, check=check, stdout=f, stderr=subprocess.STDOUT)
 
@@ -95,6 +95,9 @@ elif args.commit_choice_method == 'status_success':
 elif args.commit_choice_method  == 'all':
 	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', stdout=subprocess.PIPE)
 	hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
+
+elif args.commit_choice_method.startswith('hash='):
+	hashes = [args.commit_choice_method.split('=')[1]]
 
 else:
 	print('Unknown commit choice method "%s"'%args.commit_choice_method)
