@@ -79,7 +79,7 @@ if args.commit_choice_method == 'version_tags':
 			print(hc)
 
 elif args.commit_choice_method == 'status_success':
-	proc_output = shell_exec('git log trunk.. -n %d --pretty=format:\'%%H\''%args.max_hashes, stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', stdout=subprocess.PIPE)
 	all_hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	def get_hash_status(h):
@@ -97,7 +97,7 @@ elif args.commit_choice_method == 'status_success':
 			hashes.append(h)
 
 elif args.commit_choice_method  == 'all':
-	proc_output = shell_exec('git log trunk.. -n %d --pretty=format:\'%%H\''%args.max_hashes, stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', stdout=subprocess.PIPE)
 	hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 elif args.commit_choice_method.startswith('hash='):
@@ -108,7 +108,7 @@ elif args.commit_choice_method.startswith('delay='):
 	h, m, s = map(int, time_str.split(':'))
 	dur = datetime.timedelta(hours=h, minutes=m, seconds=s)
 
-	proc_output = shell_exec('git log trunk.. -n %d --pretty=format:\'%%H %%cI\''%args.max_hashes, stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H %cI\'', stdout=subprocess.PIPE)
 	hash_commit_dates = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	hashes = []
