@@ -19,7 +19,7 @@ ENVIRONMENT = 'macbook'
 
 parser = argparse.ArgumentParser(description='Build ocaml binaries, benchmarks and upload them for a backfill')
 parser.add_argument('outdir', type=str, help='directory of output')
-parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version_tags, status_success, hash=XXX, all)', default='version_tags')
+parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version_tags, status_success, hash=XXX, delay=00:05:00, all)', default='version_tags')
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
 parser.add_argument('--environment', type=str, default=ENVIRONMENT)
@@ -52,6 +52,8 @@ def write_context(context, fname, verbose=args.verbose):
 		print('writing context to %s: \n%s'%(fname, s))
 	print(s, file=open(fname, 'w'))
 
+def parseISO8601datetime(s):
+	return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
 
 run_timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -77,7 +79,7 @@ if args.commit_choice_method == 'version_tags':
 			print(hc)
 
 elif args.commit_choice_method == 'status_success':
-	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log trunk.. -n %d --pretty=format:\'%%H\''%args.max_hashes, stdout=subprocess.PIPE)
 	all_hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	def get_hash_status(h):
@@ -95,16 +97,40 @@ elif args.commit_choice_method == 'status_success':
 			hashes.append(h)
 
 elif args.commit_choice_method  == 'all':
-	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log trunk.. -n %d --pretty=format:\'%%H\''%args.max_hashes, stdout=subprocess.PIPE)
 	hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 elif args.commit_choice_method.startswith('hash='):
 	hashes = [args.commit_choice_method.split('=')[1]]
 
+elif args.commit_choice_method.startswith('delay='):
+	time_str = args.commit_choice_method.split('=')[1]
+	h, m, s = map(int, time_str.split(':'))
+	dur = datetime.timedelta(hours=h, minutes=m, seconds=s)
+
+	proc_output = shell_exec('git log trunk.. -n %d --pretty=format:\'%%H %%cI\''%args.max_hashes, stdout=subprocess.PIPE)
+	hash_commit_dates = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
+
+	hashes = []
+	last_h = ''
+	last_d = parseISO8601datetime('1971-01-01T00:00:00+00:00')
+	for hcd in hash_commit_dates:
+		h, d = hcd.split(' ')
+		d = parseISO8601datetime(d)
+		if d - last_d >= dur and last_h != '':
+			if args.verbose: print('Taking %s %s'%(str(last_d), last_h))
+			hashes.append(last_h)
+		last_h, last_d = h, d
+	if datetime.datetime.now(datetime.timezone.utc) - last_d >= dur:
+		hashes.append(last_h)
+		if args.verbose: print('Taking %s %s'%(str(last_d), last_h))
+
 else:
 	print('Unknown commit choice method "%s"'%args.commit_choice_method)
 	sys.exit(1)
 
+if args.verbose:
+	print('Found %d hashes using %s to do %s on'%(len(hashes), args.commit_choice_method, args.run_stages))
 
 verbose_args = ' -v' if args.verbose else ''
 os.chdir(outdir)
