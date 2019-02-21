@@ -31,10 +31,12 @@ def get_bench_dict(name, context, results):
         'executable': context['executable'],
         'environment': context['environment'],
         'benchmark': name,
+        'units': 'cycles',
+        'units_title': 'Time',
         'result_value': results['mean'],
         'min': results['min'],
         'max': results['max'],
-        'std_dev': results['standard_error'], 
+        'std_dev': results['standard_error'],
     }
 
 def parse_results(fname, context):
@@ -52,10 +54,11 @@ def parse_results(fname, context):
                 # handle groups
                 if k2.startswith('group '):
                     for k3 in benchmarks[k1][k2].keys():
-                        bench_data.append(get_bench_dict('%s/%s/%s'%(k1,k2,k3), context, benchmarks[k1][k2][k3]))
+                        k2_out = k2.replace('group ', '')
+                        bench_data.append(get_bench_dict('%s/%s/%s'%(k1,k2_out,k3), context, benchmarks[k1][k2][k3]))
                 else:
                     bench_data.append(get_bench_dict('%s/%s'%(k1,k2), context, benchmarks[k1][k2]))
-    
+
     return bench_data
 
 
