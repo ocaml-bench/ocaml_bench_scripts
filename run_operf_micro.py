@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 -u
 
 import argparse
 import datetime
@@ -51,6 +51,7 @@ shell_exec(operf_cmd('build'))
 
 for b in BENCHMARKS:
 	try:
+		print('%s: running %s'%(str(datetime.datetime.now()), b))
 		shell_exec(operf_cmd('run %s'%b))
 		shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(outdir, b))))
 	except:
