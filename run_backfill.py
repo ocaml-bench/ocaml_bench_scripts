@@ -23,6 +23,7 @@ parser.add_argument('--commit_choice_method', type=str, help='commit choice meth
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
 parser.add_argument('--environment', type=str, default=ENVIRONMENT)
+parser.add_argument('--executable_spec', type=str, help='name for executable and configure_args for build in "name:configure_args" fmt (e.g. flambda:--enable_flambda)', default='vanilla:')
 parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo', default=REPO)
 parser.add_argument('--branch', type=str, help='git branch for the compiler', default='4.07')
 parser.add_argument('--github_oauth_token', type=str, help='oauth token for github api', default=None)
@@ -146,11 +147,13 @@ for (n, h) in enumerate(hashes):
 	builddir = os.path.join(hashdir, 'ocaml_build')
 	build_context_fname = os.path.join(builddir, 'build_context.conf')
 	if 'build' in args.run_stages:
+		executable_name, configure_args = args.executable_spec.split(':')
+
 		if os.path.isfile(os.path.join(builddir, 'bin', 'ocaml')):
 			print('Skipping build for %s as already built'%h)
 		else:
 			log_fname = os.path.join(hashdir, 'build_%s.log'%run_timestamp)
-			completed_proc = shell_exec_redirect('%s/build_ocaml_hash.py --repo %s -j %d %s %s %s'%(SCRIPTDIR, args.repo, args.jobs, h, builddir, verbose_args), log_fname)
+			completed_proc = shell_exec_redirect('%s/build_ocaml_hash.py --repo %s -j %d --configure_args="%s" %s %s %s'%(SCRIPTDIR, args.repo, args.jobs, configure_args, verbose_args, h, builddir), log_fname)
 			if completed_proc.returncode != 0:
 				print('ERROR[%d] in build_ocaml_hash for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 				continue
@@ -160,7 +163,7 @@ for (n, h) in enumerate(hashes):
 			'commitid': h,
 			'branch': args.branch,
 			'project': 'ocaml_%s'%args.branch,
-			'executable': 'vanilla',
+			'executable': executable_name,
 		}
 		write_context(build_context, build_context_fname)
 
