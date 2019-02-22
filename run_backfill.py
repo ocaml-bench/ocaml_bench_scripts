@@ -188,5 +188,5 @@ for (n, h) in enumerate(hashes):
 		log_fname = os.path.join(hashdir, 'upload_%s.log'%run_timestamp)
 		completed_proc = shell_exec_redirect('%s/load_operf_data.py --codespeed_url %s %s %s'%(SCRIPTDIR, args.codespeed_url, verbose_args, operf_micro_dir), log_fname)
 		if completed_proc.returncode != 0:
-			print('ERROR[%d] in load_operf_data for %s (see %s)'%(completed_proc.returncode, h, upload_fname))
+			print('ERROR[%d] in load_operf_data for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 			continue
