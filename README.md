@@ -19,3 +19,6 @@ These scripts currently expect a couple of things in some default locations:
     cd operf-micro
     ./configure --prefix=`pwd`/opt && make && make install 
    	```
+
+NB: to get the output of the scripts to interleave correctly, you want PYTHONUNBUFFERED=TRUE in the environment
+(sadly adding python -u to the shebang doesn't work on Linux)
