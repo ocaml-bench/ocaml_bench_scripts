@@ -97,16 +97,19 @@ elif args.commit_choice_method == 'status_success':
 		if state == 'success':
 			hashes.append(h)
 
-elif args.commit_choice_method  == 'all':
-	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', stdout=subprocess.PIPE)
-	hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 elif args.commit_choice_method.startswith('hash='):
 	hashes = [args.commit_choice_method.split('=')[1]]
 
-elif args.commit_choice_method.startswith('delay='):
-	time_str = args.commit_choice_method.split('=')[1]
-	h, m, s = map(int, time_str.split(':'))
+elif args.commit_choice_method.startswith('delay=') or args.commit_choice_method == 'all':
+	# Need to batch the commits that happen on the same timestamp:
+	#  - often the build will not work properly if you don't do this
+	#  - codespeed will re-order the commits based on hash that occur on same timestamp
+	if args.commit_choice_method == 'all':
+		h, m, s = 0, 0, 0
+	else:
+		time_str = args.commit_choice_method.split('=')[1]
+		h, m, s = map(int, time_str.split(':'))
 	dur = datetime.timedelta(hours=h, minutes=m, seconds=s)
 
 	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H/%ci\'', stdout=subprocess.PIPE)
@@ -118,7 +121,7 @@ elif args.commit_choice_method.startswith('delay='):
 	for hcd in hash_commit_dates:
 		h, d = hcd.split('/')
 		d = parseISO8601Likedatetime(d)
-		if d - last_d >= dur and last_h != '':
+		if d - last_d > dur and last_h != '':
 			if args.verbose: print('Taking %s %s'%(str(last_d), last_h))
 			hashes.append(last_h)
 		last_h, last_d = h, d
