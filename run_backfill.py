@@ -133,15 +133,14 @@ else:
 	print('Unknown commit choice method "%s"'%args.commit_choice_method)
 	sys.exit(1)
 
+hashes = hashes[-args.max_hashes:]
+
 if args.verbose:
 	print('Found %d hashes using %s to do %s on'%(len(hashes), args.commit_choice_method, args.run_stages))
 
 verbose_args = ' -v' if args.verbose else ''
 os.chdir(outdir)
-for (n, h) in enumerate(hashes):
-	if n >= args.max_hashes:
-		break
-
+for h in hashes:
 	hashdir = os.path.join(outdir, h)
 	if args.verbose: print('processing to %s'%hashdir)
 	shell_exec('mkdir -p %s'%hashdir)
