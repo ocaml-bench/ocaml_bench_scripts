@@ -53,8 +53,8 @@ def write_context(context, fname, verbose=args.verbose):
 		print('writing context to %s: \n%s'%(fname, s))
 	print(s, file=open(fname, 'w'))
 
-def parseISO8601datetime(s):
-	return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
+def parseISO8601Likedatetime(s):
+	return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S %z")
 
 run_timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -109,15 +109,15 @@ elif args.commit_choice_method.startswith('delay='):
 	h, m, s = map(int, time_str.split(':'))
 	dur = datetime.timedelta(hours=h, minutes=m, seconds=s)
 
-	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H %cI\'', stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H/%ci\'', stdout=subprocess.PIPE)
 	hash_commit_dates = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	hashes = []
 	last_h = ''
-	last_d = parseISO8601datetime('1971-01-01T00:00:00+00:00')
+	last_d = parseISO8601Likedatetime('1971-01-01 00:00:00 +0000')
 	for hcd in hash_commit_dates:
-		h, d = hcd.split(' ')
-		d = parseISO8601datetime(d)
+		h, d = hcd.split('/')
+		d = parseISO8601Likedatetime(d)
 		if d - last_d >= dur and last_h != '':
 			if args.verbose: print('Taking %s %s'%(str(last_d), last_h))
 			hashes.append(last_h)
@@ -160,10 +160,12 @@ for (n, h) in enumerate(hashes):
 
 		# output build context
 		build_context = {
-			'commitid': h,
+			'commitid': h[:7],
+			'commitid_long': h,
 			'branch': args.branch,
 			'project': 'ocaml_%s'%args.branch,
 			'executable': executable_name,
+			'executable_description': './configure %s'%configure_args,
 		}
 		write_context(build_context, build_context_fname)
 
