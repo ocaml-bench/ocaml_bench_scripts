@@ -11,6 +11,7 @@ parser.add_argument('hash', type=str, help='commit hash to pull')
 parser.add_argument('basedir', type=str, help='location to put the source and the build')
 parser.add_argument('--configure_args', type=str, help='additional configure arguments', default=None)
 parser.add_argument('--repo', type=str, help='alternate URL for the repo', default=REPO)
+parser.add_argument('--no_clean', action='store_true', default=False)
 parser.add_argument('-j', '--jobs', type=int, help='number of jobs for make in build', default=1)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
@@ -44,4 +45,5 @@ shell_exec('./configure --prefix %s %s'%(basedir, xtra_args))
 shell_exec('make world -j %d'%args.jobs)
 shell_exec('make world.opt -j %d'%args.jobs)
 shell_exec('make install')
-
+if not args.no_clean:
+	shell_exec('make clean')
