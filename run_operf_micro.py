@@ -7,19 +7,32 @@ import subprocess
 
 OPERF_BINARY = '/Users/ctk21/proj/operf-micro/test/bin/operf-micro'
 BENCHMARKS = [
-	'sieve',
-	'lens',
-	'sequence',
-	'fibonnaci',
-	'fft',
-	'nucleic',
 	'almabench',
+	'nucleic',
+	'boyer',
+	'kb',
+	'num_analysis',
+	'bigarray_rev',
+	'fibonnaci',
+	'lens',
+	'vector_functor',
+	'kahan_sum',
+	'hamming',
+	'sieve',
+	'list',
 	'format',
+	'fft',
+	'bdd',
+	'sequence',
+	'nullable_array',
 	]
+DEFAULT_TIME_QUOTA = 5.0
 
 parser = argparse.ArgumentParser(description='Run operf-micro and collate results')
 parser.add_argument('bindir', type=str, help='binary directory of ocaml compiler to use')
 parser.add_argument('outdir', type=str, help='output directory for results')
+parser.add_argument('--benchmarks', type=str, help='comma seperated list of benchmarks to run', default=','.join(BENCHMARKS))
+parser.add_argument('--time_quota', help='time_quota for operf-micro (default: %s)'%DEFAULT_TIME_QUOTA, default=DEFAULT_TIME_QUOTA)
 parser.add_argument('--operf_binary', type=str, help='operf binary to use', default=OPERF_BINARY)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
@@ -49,10 +62,10 @@ shell_exec(operf_cmd('clean'), check=False) ## TODO: sometimes this fails, what 
 shell_exec(operf_cmd('init --bin-dir %s %s'%(bindir, tag)))
 shell_exec(operf_cmd('build'))
 
-for b in BENCHMARKS:
+for b in args.benchmarks.split(','):
 	try:
 		print('%s: running %s'%(str(datetime.datetime.now()), b))
-		shell_exec(operf_cmd('run %s'%b))
+		shell_exec(operf_cmd('run --time-quota %s %s'%(args.time_quota, b)))
 		shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(outdir, b))))
 	except:
 		print('ERROR: operf run failed for %s'%b)
