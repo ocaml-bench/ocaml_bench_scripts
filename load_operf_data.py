@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser(description='Load operf-micro summary files int
 parser.add_argument('resultdir', type=str, help='directory of results')
 parser.add_argument('--codespeed_url', type=str, help='url of codespeed server', default=CODESPEED_URL)
 parser.add_argument('--glob_pattern', type=str, help='glob pattern for summary files', default=GLOB_PATTERN)
+parser.add_argument('--halt_on_bad_parse', action='store_true', default=False)
 parser.add_argument('--dry_run', action='store_true', default=False)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
@@ -115,7 +116,14 @@ if args.verbose:
 for f in sorted(glob.glob(glob_str)):
     if args.verbose:
         print('processing %s'%f)
-    results = parse_results(f, context)
+
+    try:
+        results = parse_results(f, context)
+    except:
+        print('ERROR: failed to parse results in %s'%f)
+        if args.halt_on_bad_parse:
+            sys.exit(1)
+
     if args.verbose:
         print('loaded: \n%s'%yaml.dump(results, default_flow_style=False))
 
