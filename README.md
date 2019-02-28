@@ -107,4 +107,4 @@ watch cat /sys/devices/system/cpu/cpu?/cpufreq/scaling_cur_freq
  - https://vstinner.github.io/journey-to-stable-benchmark-system.html 
  - https://gist.github.com/Dieterbe/a52c95a9603507670eb39274544ee1a8 (not sure I 100% agree with all in here but gives you some ideas)
  - https://blog.phusion.nl/2017/07/13/understanding-your-benchmarks-and-easy-tips-for-fixing-them/
-
+ - Understanding and isolating the noise in the Linux kernel: https://journals.sagepub.com/doi/abs/10.1177/1094342013477892
