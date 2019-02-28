@@ -24,7 +24,7 @@ parser.add_argument('outdir', type=str, help='directory of output')
 parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo (default: %s)'%REPO, default=REPO)
 parser.add_argument('--branch', type=str, help='git branch for the compiler (default: %s)'%DEFAULT_BRANCH, default=DEFAULT_BRANCH)
 parser.add_argument('--main_branch', type=str, help='name of mainline git branch for compiler (default: %s)'%DEFAULT_MAIN_BRANCH, default=DEFAULT_MAIN_BRANCH)
-parser.add_argument('--repo_pull', action='store_true', default=False)
+parser.add_argument('--repo_pull', action='store_true', help="do a pull on the git repo before selecting hashes", default=False)
 parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version_tags, status_success, hash=XXX, delay=00:05:00, all)', default='version_tags')
 parser.add_argument('--commit_after', type=str, help='select commits after the specified date (e.g. 2017-10-02)', default=None)
 parser.add_argument('--commit_before', type=str, help='select commits before the specified date (e.g. 2017-10-02)', default=None)
@@ -75,8 +75,9 @@ if args.verbose: print('making directory: %s'%outdir)
 shell_exec('mkdir -p %s'%outdir)
 
 ## generate list of hash commits
-if args.verbose: print('using repo: %s'%args.repo)
-os.chdir(args.repo)
+repo_path = os.path.abspath(args.repo)
+if args.verbose: print('using repo: %s'%repo_path)
+os.chdir(repo_path)
 shell_exec('git checkout %s'%args.branch)
 if args.repo_pull:
 	shell_exec('git pull')
@@ -86,6 +87,8 @@ if args.commit_after:
 	commit_xtra_args += ' --after %s'%args.commit_after
 if args.commit_before:
 	commit_xtra_args += ' --before %s'%args.commit_before
+
+commit_path = '%s..'%args.main_branch if args.main_branch != args.branch else ''
 
 if args.commit_choice_method == 'version_tags':
 	proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' %s | grep VERSION | grep %s'%(commit_xtra_args, args.branch), stdout=subprocess.PIPE)
@@ -97,7 +100,7 @@ if args.commit_choice_method == 'version_tags':
 			print(hc)
 
 elif args.commit_choice_method == 'status_success':
-	proc_output = shell_exec('git log %s.. --pretty=format:\'%%H\' %s' % (args.main_branch, commit_xtra_args), stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log %s --pretty=format:\'%%H\' %s' % (commit_path, commit_xtra_args), stdout=subprocess.PIPE)
 	all_hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	def get_hash_status(h):
@@ -129,7 +132,7 @@ elif args.commit_choice_method.startswith('delay=') or args.commit_choice_method
 		h, m, s = map(int, time_str.split(':'))
 	dur = datetime.timedelta(hours=h, minutes=m, seconds=s)
 
-	proc_output = shell_exec('git log %s.. --pretty=format:\'%%H/%%ci\' %s'%(args.main_branch, commit_xtra_args), stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log %s --pretty=format:\'%%H/%%ci\' %s'%(commit_path, commit_xtra_args), stdout=subprocess.PIPE)
 	hash_commit_dates = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	hashes = []
@@ -173,7 +176,7 @@ for h in hashes:
 			print('Skipping build for %s as already built'%h)
 		else:
 			log_fname = os.path.join(hashdir, 'build_%s.log'%run_timestamp)
-			completed_proc = shell_exec_redirect('%s/build_ocaml_hash.py --repo %s -j %d --configure_args="%s" %s %s %s'%(SCRIPTDIR, args.repo, args.jobs, configure_args, verbose_args, h, builddir), log_fname)
+			completed_proc = shell_exec_redirect('%s/build_ocaml_hash.py --repo %s -j %d --configure_args="%s" %s %s %s'%(SCRIPTDIR, repo_path, args.jobs, configure_args, verbose_args, h, builddir), log_fname)
 			if completed_proc.returncode != 0:
 				print('ERROR[%d] in build_ocaml_hash for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 				continue
