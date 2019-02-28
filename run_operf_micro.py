@@ -31,6 +31,7 @@ DEFAULT_TIME_QUOTA = 5.0
 parser = argparse.ArgumentParser(description='Run operf-micro and collate results')
 parser.add_argument('bindir', type=str, help='binary directory of ocaml compiler to use')
 parser.add_argument('outdir', type=str, help='output directory for results')
+parser.add_argument('--results_timestamp', type=str, help='explicit timestamp to use', default=datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
 parser.add_argument('--benchmarks', type=str, help='comma seperated list of benchmarks to run', default=','.join(BENCHMARKS))
 parser.add_argument('--time_quota', help='time_quota for operf-micro (default: %s)'%DEFAULT_TIME_QUOTA, default=DEFAULT_TIME_QUOTA)
 parser.add_argument('--operf_binary', type=str, help='operf binary to use', default=OPERF_BINARY)
@@ -46,12 +47,13 @@ def shell_exec(cmd, verbose=args.verbose, check=True):
 # setup the directories
 bindir = os.path.abspath(args.bindir)
 outdir = os.path.abspath(args.outdir)
+resultdir = os.path.join(outdir, args.results_timestamp)
 
-shell_exec('mkdir -p %s'%outdir)
+shell_exec('mkdir -p %s'%resultdir)
 
 # get git source and checkout the hash
-if args.verbose: print('changing working directory to %s to run operf-micro'%outdir)
-os.chdir(outdir)
+if args.verbose: print('changing working directory to %s to run operf-micro'%resultdir)
+os.chdir(resultdir)
 
 tag = 'Test%s'%datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -66,6 +68,6 @@ for b in args.benchmarks.split(','):
 	try:
 		print('%s: running %s'%(str(datetime.datetime.now()), b))
 		shell_exec(operf_cmd('run --time-quota %s %s'%(args.time_quota, b)))
-		shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(outdir, b))))
+		shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(resultdir, b))))
 	except:
 		print('ERROR: operf run failed for %s'%b)
