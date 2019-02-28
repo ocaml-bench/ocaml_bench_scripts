@@ -13,20 +13,28 @@ def get_script_dir():
 
 SCRIPTDIR = get_script_dir()
 REPO = os.path.join(SCRIPTDIR, 'ocaml')
+DEFAULT_BRANCH = '4.07'
+DEFAULT_MAIN_BRANCH = 'trunk'
 OPERF_BINARY = os.path.join(SCRIPTDIR, 'operf-micro/opt/bin/operf-micro')
 CODESPEED_URL = 'http://localhost:8000/'
 ENVIRONMENT = 'macbook'
 
 parser = argparse.ArgumentParser(description='Build ocaml binaries, benchmarks and upload them for a backfill')
 parser.add_argument('outdir', type=str, help='directory of output')
+parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo (default: %s)'%REPO, default=REPO)
+parser.add_argument('--branch', type=str, help='git branch for the compiler (default: %s)'%DEFAULT_BRANCH, default=DEFAULT_BRANCH)
+parser.add_argument('--main_branch', type=str, help='name of mainline git branch for compiler (default: %s)'%DEFAULT_MAIN_BRANCH, default=DEFAULT_MAIN_BRANCH)
+parser.add_argument('--repo_pull', action='store_true', default=False)
 parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version_tags, status_success, hash=XXX, delay=00:05:00, all)', default='version_tags')
+parser.add_argument('--commit_after', type=str, help='select commits after the specified date (e.g. 2017-10-02)', default=None)
+parser.add_argument('--commit_before', type=str, help='select commits before the specified date (e.g. 2017-10-02)', default=None)
+parser.add_argument('--github_oauth_token', type=str, help='oauth token for github api', default=None)
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
-parser.add_argument('--environment', type=str, default=ENVIRONMENT)
 parser.add_argument('--executable_spec', type=str, help='name for executable and configure_args for build in "name:configure_args" fmt (e.g. flambda:--enable_flambda)', default='vanilla:')
-parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo', default=REPO)
-parser.add_argument('--branch', type=str, help='git branch for the compiler', default='4.07')
-parser.add_argument('--github_oauth_token', type=str, help='oauth token for github api', default=None)
+parser.add_argument('--rerun_operf', action='store_true', help='regenerate operf results with rerun if already present', default=False)
+parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
+parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
 parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
 parser.add_argument('-j', '--jobs', type=int, help='number of concurrent jobs during build', default=1)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
@@ -67,11 +75,20 @@ if args.verbose: print('making directory: %s'%outdir)
 shell_exec('mkdir -p %s'%outdir)
 
 ## generate list of hash commits
+if args.verbose: print('using repo: %s'%args.repo)
 os.chdir(args.repo)
 shell_exec('git checkout %s'%args.branch)
+if args.repo_pull:
+	shell_exec('git pull')
+
+commit_xtra_args = ''
+if args.commit_after:
+	commit_xtra_args += ' --after %s'%args.commit_after
+if args.commit_before:
+	commit_xtra_args += ' --before %s'%args.commit_before
 
 if args.commit_choice_method == 'version_tags':
-	proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' | grep VERSION | grep %s'%args.branch, stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' %s | grep VERSION | grep %s'%(commit_xtra_args, args.branch), stdout=subprocess.PIPE)
 	hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	hashes = [hc.split(' ')[0] for hc in hash_comments]
@@ -80,7 +97,7 @@ if args.commit_choice_method == 'version_tags':
 			print(hc)
 
 elif args.commit_choice_method == 'status_success':
-	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H\'', stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log %s.. --pretty=format:\'%%H\' %s' % (args.main_branch, commit_xtra_args), stdout=subprocess.PIPE)
 	all_hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	def get_hash_status(h):
@@ -112,7 +129,7 @@ elif args.commit_choice_method.startswith('delay=') or args.commit_choice_method
 		h, m, s = map(int, time_str.split(':'))
 	dur = datetime.timedelta(hours=h, minutes=m, seconds=s)
 
-	proc_output = shell_exec('git log trunk.. --pretty=format:\'%H/%ci\'', stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log %s.. --pretty=format:\'%%H/%%ci\' %s'%(args.main_branch, commit_xtra_args), stdout=subprocess.PIPE)
 	hash_commit_dates = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
 
 	hashes = []
@@ -133,6 +150,7 @@ else:
 	print('Unknown commit choice method "%s"'%args.commit_choice_method)
 	sys.exit(1)
 
+hashes = [ h for h in hashes if h ] # filter any null hashes
 hashes = hashes[-args.max_hashes:]
 
 if args.verbose:
@@ -160,37 +178,55 @@ for h in hashes:
 				print('ERROR[%d] in build_ocaml_hash for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 				continue
 
-		# output build context
-		build_context = {
-			'commitid': h[:7],
-			'commitid_long': h,
-			'branch': args.branch,
-			'project': 'ocaml_%s'%args.branch,
-			'executable': executable_name,
-			'executable_description': './configure %s'%configure_args,
-		}
-		write_context(build_context, build_context_fname)
+			# output build context
+			build_context = {
+				'commitid': h[:7],
+				'commitid_long': h,
+				'branch': args.branch,
+				'project': 'ocaml_%s'%args.branch,
+				'executable': executable_name,
+				'executable_description': './configure %s'%configure_args,
+			}
+			write_context(build_context, build_context_fname)
 
 	## run operf for commit
 	operf_micro_dir = os.path.join(hashdir, 'operf-micro')
 	if 'operf' in args.run_stages:
-		log_fname = os.path.join(hashdir, 'operf_%s.log'%run_timestamp)
-		completed_proc = shell_exec_redirect('%s/run_operf_micro.py %s %s --operf_binary %s %s'%(SCRIPTDIR, os.path.join(builddir, 'bin'), operf_micro_dir, OPERF_BINARY, verbose_args), log_fname)
-		if completed_proc.returncode != 0:
-			print('ERROR[%d] in run_operf_micro for %s (see %s)'%(completed_proc.returncode, h, log_fname))
-			continue
+		if args.rerun_operf or not os.path.exists(operf_micro_dir) or not os.listdir(operf_micro_dir):
+			log_fname = os.path.join(hashdir, 'operf_%s.log'%run_timestamp)
+			completed_proc = shell_exec_redirect('%s/run_operf_micro.py --results_timestamp %s --operf_binary %s %s %s %s'%(SCRIPTDIR, run_timestamp, OPERF_BINARY, verbose_args, os.path.join(builddir, 'bin'), operf_micro_dir), log_fname)
+			if completed_proc.returncode != 0:
+				print('ERROR[%d] in run_operf_micro for %s (see %s)'%(completed_proc.returncode, h, log_fname))
+				continue
 
-		# output run context
-		run_context = {
-			'environment': args.environment,
-		}
-		write_context(run_context, os.path.join(operf_micro_dir, 'run_context.conf'))
-		shell_exec('cp %s %s'%(build_context_fname, os.path.join(operf_micro_dir, 'build_context.conf')))
+			# output run context
+			run_context = {
+				'environment': args.environment,
+			}
+
+			resultdir = os.path.join(operf_micro_dir, run_timestamp)
+			write_context(run_context, os.path.join(resultdir, 'run_context.conf'))
+			shell_exec('cp %s %s'%(build_context_fname, os.path.join(resultdir, 'build_context.conf')))
+		else:
+			print('Skipping operf run for %s as already have results %s'%(h, os.listdir(operf_micro_dir)))
 
 	## upload commit
 	if 'upload' in args.run_stages:
 		log_fname = os.path.join(hashdir, 'upload_%s.log'%run_timestamp)
-		completed_proc = shell_exec_redirect('%s/load_operf_data.py --codespeed_url %s %s %s'%(SCRIPTDIR, args.codespeed_url, verbose_args, operf_micro_dir), log_fname)
-		if completed_proc.returncode != 0:
-			print('ERROR[%d] in load_operf_data for %s (see %s)'%(completed_proc.returncode, h, log_fname))
-			continue
+
+		if args.upload_date_tag:
+			resultdir = args.upload_date_tag
+		else:
+			result_dirs = sorted(os.listdir(operf_micro_dir))
+			resultdir = result_dirs[-1] if result_dirs else None
+
+		if resultdir:
+			resultdir = os.path.join(operf_micro_dir, resultdir)
+			print('uploading results from %s'%resultdir)
+
+			completed_proc = shell_exec_redirect('%s/load_operf_data.py --codespeed_url %s %s %s'%(SCRIPTDIR, args.codespeed_url, verbose_args, resultdir), log_fname)
+			if completed_proc.returncode != 0:
+				print('ERROR[%d] in load_operf_data for %s (see %s)'%(completed_proc.returncode, h, log_fname))
+				continue
+		else:
+			print("ERROR couldn't find any result directories to upload in %s"%operf_micro_dir)
