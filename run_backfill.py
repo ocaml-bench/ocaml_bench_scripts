@@ -34,6 +34,7 @@ parser.add_argument('--run_stages', type=str, help='stages to run', default='bui
 parser.add_argument('--executable_spec', type=str, help='name for executable and configure_args for build in "name:configure_args" fmt (e.g. flambda:--enable_flambda)', default='vanilla:')
 parser.add_argument('--rerun_operf', action='store_true', help='regenerate operf results with rerun if already present', default=False)
 parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
+parser.add_argument('--upload_project_name', type=str, help='specific upload project name (default is ocaml_<branch name>', default=None)
 parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
 parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
 parser.add_argument('-j', '--jobs', type=int, help='number of concurrent jobs during build', default=1)
@@ -186,7 +187,7 @@ for h in hashes:
 				'commitid': h[:7],
 				'commitid_long': h,
 				'branch': args.branch,
-				'project': 'ocaml_%s'%args.branch,
+				'project': args.upload_project_name if args.upload_project_name else 'ocaml_%s'%args.branch,
 				'executable': executable_name,
 				'executable_description': './configure %s'%configure_args,
 			}
