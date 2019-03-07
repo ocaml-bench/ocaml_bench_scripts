@@ -92,7 +92,7 @@ commit_path = '%s..'%args.main_branch if args.main_branch != args.branch else ''
 
 if args.commit_choice_method == 'version_tags':
 	proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' %s | grep VERSION | grep %s'%(commit_xtra_args, args.branch), stdout=subprocess.PIPE)
-	hash_comments = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
+	hash_comments = proc_output.stdout.decode('utf-8').split('\n')[-2::-1]
 
 	hashes = [hc.split(' ')[0] for hc in hash_comments]
 	if args.verbose:
@@ -101,7 +101,7 @@ if args.commit_choice_method == 'version_tags':
 
 elif args.commit_choice_method == 'status_success':
 	proc_output = shell_exec('git log %s --pretty=format:\'%%H\' %s' % (commit_path, commit_xtra_args), stdout=subprocess.PIPE)
-	all_hashes = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
+	all_hashes = proc_output.stdout.decode('utf-8').split('\n')[-2::-1]
 
 	def get_hash_status(h):
 		curl_xtra_args = '-s'
@@ -133,7 +133,7 @@ elif args.commit_choice_method.startswith('delay=') or args.commit_choice_method
 	dur = datetime.timedelta(hours=h, minutes=m, seconds=s)
 
 	proc_output = shell_exec('git log %s --pretty=format:\'%%H/%%ci\' %s'%(commit_path, commit_xtra_args), stdout=subprocess.PIPE)
-	hash_commit_dates = proc_output.stdout.decode('utf-8').strip().split('\n')[::-1]
+	hash_commit_dates = proc_output.stdout.decode('utf-8').split('\n')[-2::-1]
 
 	hashes = []
 	last_h = ''
