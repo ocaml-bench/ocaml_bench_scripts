@@ -221,7 +221,7 @@ for h in hashes:
 		if args.upload_date_tag:
 			resultdir = args.upload_date_tag
 		else:
-			result_dirs = sorted(os.listdir(operf_micro_dir))
+			result_dirs = sorted(os.listdir(operf_micro_dir)) if os.path.path.exists(operf_micro_dir) else: []
 			resultdir = result_dirs[-1] if result_dirs else None
 
 		if resultdir:
