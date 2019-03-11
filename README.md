@@ -46,9 +46,7 @@ taskset --cpu-list 5 shasum /dev/zero
 
 ### Interrupts
 
-You want to turn off the interrupt balancing and point everything at core 0. A simple way to acheive this is adding `ENABLED=0` to `/etc/default/irqbalance` on Ubuntu. 
-You can also disable the irqbalance service at boot:
-```sudo update-rc.d irqbalance disable```
+You want to turn off the interrupt balancing and point everything at core 0. A simple way to acheive this is adding `ENABLED=0` to `/etc/default/irqbalance` on Ubuntu. On Ubuntu I found that you needed to still have the irqbalance service running for this to work; that is you need the `ENABLED=0` flag in the config and the service to execute seeing that flag. 
 
 You can check this is working with: 
 ```watch cat /proc/interrupts```
