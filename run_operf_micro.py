@@ -67,7 +67,7 @@ shell_exec(operf_cmd('build'))
 for b in args.benchmarks.split(','):
 	try:
 		print('%s: running %s'%(str(datetime.datetime.now()), b))
-		shell_exec(operf_cmd('run --time-quota %s %s'%(args.time_quota, b)))
+		shell_exec(operf_cmd('run --time-quota %s -o %s %s'%(args.time_quota, resultdir, b)))
 		shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(resultdir, b))))
 	except:
 		print('ERROR: operf run failed for %s'%b)
