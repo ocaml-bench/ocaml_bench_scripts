@@ -2,6 +2,7 @@
 
 import argparse
 import datetime
+import glob
 import os
 import subprocess
 
@@ -60,6 +61,18 @@ tag = 'Test%s'%datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 def operf_cmd(s):
 	return '%s %s'%(args.operf_binary, s)
 
+## NB: can't use the 'operf-micro run' -o option because the result files will
+##     then not be visible to the 'operf-micro results' command that follows
+def copy_out_results(tag, benchmark, resultdir):
+	operf_results_tag_dir = os.path.join(os.path.expanduser('~'), '.operf', 'micro', tag, '*')
+	all_run_dirs = sorted(glob.glob(operf_results_tag_dir))
+	if len(all_run_dirs) > 0:
+		run_dir = all_run_dirs[-1]
+		shell_exec('cp %s %s'%(os.path.join(run_dir, '%s.result'%benchmark), resultdir), check=False)
+	else:
+		print('ERROR: failed to find runs in %s'%operf_results_tag_dir)
+
+
 shell_exec(operf_cmd('clean'), check=False) ## TODO: sometimes this fails, what is the correct thing to do?
 shell_exec(operf_cmd('init --bin-dir %s %s'%(bindir, tag)))
 shell_exec(operf_cmd('build'))
@@ -67,7 +80,9 @@ shell_exec(operf_cmd('build'))
 for b in args.benchmarks.split(','):
 	try:
 		print('%s: running %s'%(str(datetime.datetime.now()), b))
-		shell_exec(operf_cmd('run --time-quota %s -o %s %s'%(args.time_quota, resultdir, b)))
+		shell_exec(operf_cmd('run --time-quota %s %s'%(args.time_quota, b)))
+		copy_out_results(tag, b, resultdir)
 		shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(resultdir, b))))
-	except:
+	except Exception as e:
 		print('ERROR: operf run failed for %s'%b)
+		print(e)
