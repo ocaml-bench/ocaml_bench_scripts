@@ -25,6 +25,7 @@ parser.add_argument('--repo', type=str, help='local location of ocmal compiler r
 parser.add_argument('--branch', type=str, help='git branch for the compiler (default: %s)'%DEFAULT_BRANCH, default=DEFAULT_BRANCH)
 parser.add_argument('--main_branch', type=str, help='name of mainline git branch for compiler (default: %s)'%DEFAULT_MAIN_BRANCH, default=DEFAULT_MAIN_BRANCH)
 parser.add_argument('--repo_pull', action='store_true', help="do a pull on the git repo before selecting hashes", default=False)
+parser.add_argument('--no_first_parent', action='store_true', help="By default we use first-parent on git logs (to keep date ordering sane); this option turns it off", default=False)
 parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version_tags, status_success, hash=XXX, delay=00:05:00, all)', default='version_tags')
 parser.add_argument('--commit_after', type=str, help='select commits after the specified date (e.g. 2017-10-02)', default=None)
 parser.add_argument('--commit_before', type=str, help='select commits before the specified date (e.g. 2017-10-02)', default=None)
@@ -90,9 +91,10 @@ if args.commit_before:
 	commit_xtra_args += ' --before %s'%args.commit_before
 
 commit_path = '%s..'%args.main_branch if args.main_branch != args.branch else ''
+first_parent = '' if args.no_first_parent else '--first-parent'
 
 if args.commit_choice_method == 'version_tags':
-	proc_output = shell_exec('git log --pretty=format:\'%%H %%s\' %s | grep VERSION | grep %s'%(commit_xtra_args, args.branch), stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log %s --pretty=format:\'%%H %%s\' %s | grep VERSION | grep %s'%(first_parent, commit_xtra_args, args.branch), stdout=subprocess.PIPE)
 	hash_comments = proc_output.stdout.decode('utf-8').split('\n')[::-1]
 	hash_comments = filter(bool, hash_comments) # remove empty strings
 
@@ -102,7 +104,7 @@ if args.commit_choice_method == 'version_tags':
 			print(hc)
 
 elif args.commit_choice_method == 'status_success':
-	proc_output = shell_exec('git log %s --pretty=format:\'%%H\' %s' % (commit_path, commit_xtra_args), stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log %s %s --pretty=format:\'%%H\' %s' % (commit_path, first_parent, commit_xtra_args), stdout=subprocess.PIPE)
 	all_hashes = proc_output.stdout.decode('utf-8').split('\n')[::-1]
 	all_hashes = filter(bool, all_hashes) # remove empty strings
 
@@ -135,7 +137,7 @@ elif args.commit_choice_method.startswith('delay=') or args.commit_choice_method
 		h, m, s = map(int, time_str.split(':'))
 	dur = datetime.timedelta(hours=h, minutes=m, seconds=s)
 
-	proc_output = shell_exec('git log %s --pretty=format:\'%%H/%%ci\' %s'%(commit_path, commit_xtra_args), stdout=subprocess.PIPE)
+	proc_output = shell_exec('git log %s %s --pretty=format:\'%%H/%%ci\' %s'%(commit_path, first_parent, commit_xtra_args), stdout=subprocess.PIPE)
 	hash_commit_dates = proc_output.stdout.decode('utf-8').split('\n')[::-1]
 	hash_commit_dates = filter(bool, hash_commit_dates) # remove empty strings
 
