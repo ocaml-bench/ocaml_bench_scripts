@@ -10,9 +10,10 @@ OPERF_BINARY = '/Users/ctk21/proj/operf-micro/test/bin/operf-micro'
 BENCHMARKS = [
 	'almabench',
 	'nucleic',
-	'boyer',
-	'kb',
-	'num_analysis',
+	## TODO: the following are not producing output?!?
+	#'boyer',
+	#'kb',
+	#'num_analysis',
 	'bigarray_rev',
 	'fibonnaci',
 	'lens',
