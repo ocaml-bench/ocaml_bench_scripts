@@ -25,6 +25,7 @@ parser.add_argument('--repo', type=str, help='local location of ocmal compiler r
 parser.add_argument('--branch', type=str, help='git branch for the compiler (default: %s)'%DEFAULT_BRANCH, default=DEFAULT_BRANCH)
 parser.add_argument('--main_branch', type=str, help='name of mainline git branch for compiler (default: %s)'%DEFAULT_MAIN_BRANCH, default=DEFAULT_MAIN_BRANCH)
 parser.add_argument('--repo_pull', action='store_true', help="do a pull on the git repo before selecting hashes", default=False)
+parser.add_argument('--use_repo_archive', action='store_true', help="use archive to get source out of repo to save space", default=False)
 parser.add_argument('--no_first_parent', action='store_true', help="By default we use first-parent on git logs (to keep date ordering sane); this option turns it off", default=False)
 parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version_tags, status_success, hash=XXX, delay=00:05:00, all)', default='version_tags')
 parser.add_argument('--commit_after', type=str, help='select commits after the specified date (e.g. 2017-10-02)', default=None)
@@ -182,7 +183,8 @@ for h in hashes:
 			print('Skipping build for %s as already built'%h)
 		else:
 			log_fname = os.path.join(hashdir, 'build_%s.log'%run_timestamp)
-			completed_proc = shell_exec_redirect('%s/build_ocaml_hash.py --repo %s -j %d --configure_args="%s" %s %s %s'%(SCRIPTDIR, repo_path, args.jobs, configure_args, verbose_args, h, builddir), log_fname)
+			use_archive_opt = '--use_archive' if args.use_repo_archive else ''
+			completed_proc = shell_exec_redirect('%s/build_ocaml_hash.py --repo %s %s -j %d --configure_args="%s" %s %s %s'%(SCRIPTDIR, repo_path, use_archive_opt, args.jobs, configure_args, verbose_args, h, builddir), log_fname)
 			if completed_proc.returncode != 0:
 				print('ERROR[%d] in build_ocaml_hash for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 				continue
