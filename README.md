@@ -20,8 +20,24 @@ These scripts currently expect a couple of things in some default locations:
     ./configure --prefix=`pwd`/opt && make && make install 
    	```
 
-NB: to get the output of the scripts to interleave correctly, you want PYTHONUNBUFFERED=TRUE in the environment
+NB: to get the output of the scripts to interleave correctly, you want `PYTHONUNBUFFERED=TRUE` in the environment
 (sadly adding python -u to the shebang doesn't work on Linux)
+
+## operf-micro crib sheet
+
+You see something interesting from the data, but how do you rerun just that test and see what's going on. Here is how you would rerun the `fibonnaci` test and plot its data:
+
+```console
+   mkdir operf_test_dir
+   cd my_opref_test_dir
+   operf-micro init --bin-dir <path_to_my_ocaml_compiler_bin_dir> my_operf_test
+   operf-micro build
+   operf-micro run fibonnaci
+   operf-micro results --more my_operf_test fibonnaci
+   operf-micro plot fibonnaci my_operf_test
+```
+
+Full documentation is <a href="https://www.typerex.org/operf-micro.html">here</a>.
 
 
 ## Notes on hardware and OS settings for Linux benchmarking
