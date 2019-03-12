@@ -33,7 +33,7 @@ You see something interesting from the data, but how do you rerun just that test
    operf-micro init --bin-dir <path_to_my_ocaml_compiler_bin_dir> my_operf_test
    operf-micro build
    operf-micro run fibonnaci
-   operf-micro results --more my_operf_test fibonnaci
+   operf-micro results --more --selected fibonnaci my_operf_test 
    operf-micro plot fibonnaci my_operf_test
 ```
 

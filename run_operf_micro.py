@@ -10,16 +10,15 @@ OPERF_BINARY = '/Users/ctk21/proj/operf-micro/test/bin/operf-micro'
 BENCHMARKS = [
 	'almabench',
 	'nucleic',
-	## TODO: the following are not producing output?!?
-	#'boyer',
-	#'kb',
-	#'num_analysis',
+	'boyer', ## TODO: need a way to tag this as 'long'
+	'kb', ## TODO: need a way to tag this as 'long'
+	'num_analysis', ## TODO: need a way to tag this as 'long'
 	'bigarray_rev',
 	'fibonnaci',
 	'lens',
 	'vector_functor',
 	'kahan_sum',
-	'hamming',
+	'hamming', ## TODO: need a way to tag this as 'long'
 	'sieve',
 	'list',
 	'format',
