@@ -117,8 +117,26 @@ sudo tlp stat -p
 watch cat /sys/devices/system/cpu/cpu?/cpufreq/scaling_cur_freq 
 ```
 
+### ASLR on process runs
+
+Usually processes on linux will have address space layout randomization (ASLR) switched on. You can check if this is the case with
+```
+cat /proc/sys/kernel/randomize_va_space
+```
+0 is off, 1 is on, 2 includes the data segments. 
+
+You can run a process (and it's children) with ASLR switched off using:
+```
+setarch `uname -m` --addr-no-randomize <cmd>
+```
+
+If you leave ASLR switched on, then for some benchmarks it is possible that you will introduce noise (the operf-micro format benchmarks are a good example). It's important to realize that for a given operf run, the address space layout is the same. Hence all the samples collected are for that specific layout. 
+
+If you are doing continuous integration style benchmarking with ASLR on, then you really should run a collection of independent processes to sample over the different layouts. Or be aware that the same binary can give you different results between process runs depending on the layout. 
+
 ### Interesting links on the subject
  - https://vstinner.github.io/journey-to-stable-benchmark-system.html 
  - https://gist.github.com/Dieterbe/a52c95a9603507670eb39274544ee1a8 (not sure I 100% agree with all in here but gives you some ideas)
  - https://blog.phusion.nl/2017/07/13/understanding-your-benchmarks-and-easy-tips-for-fixing-them/
  - Understanding and isolating the noise in the Linux kernel: https://journals.sagepub.com/doi/abs/10.1177/1094342013477892
+ - ASLR info: https://linux-audit.com/linux-aslr-and-kernelrandomize_va_space-setting/
