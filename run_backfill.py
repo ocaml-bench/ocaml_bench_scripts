@@ -34,6 +34,7 @@ parser.add_argument('--github_oauth_token', type=str, help='oauth token for gith
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
 parser.add_argument('--executable_spec', type=str, help='name for executable and configure_args for build in "name:configure_args" fmt (e.g. flambda:--enable_flambda)', default='vanilla:')
+parser.add_argument('--use_addr_no_randomize', action='store_true', help='use addr_no_randomize to run the operf benchmarks (Linux only)', default=False)
 parser.add_argument('--rerun_operf', action='store_true', help='regenerate operf results with rerun if already present', default=False)
 parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
 parser.add_argument('--upload_project_name', type=str, help='specific upload project name (default is ocaml_<branch name>', default=None)
@@ -206,7 +207,8 @@ for h in hashes:
 	if 'operf' in args.run_stages:
 		if args.rerun_operf or not os.path.exists(operf_micro_dir) or not os.listdir(operf_micro_dir):
 			log_fname = os.path.join(hashdir, 'operf_%s.log'%run_timestamp)
-			completed_proc = shell_exec_redirect('%s/run_operf_micro.py --make_plots --results_timestamp %s --operf_binary %s %s %s %s'%(SCRIPTDIR, run_timestamp, OPERF_BINARY, verbose_args, os.path.join(builddir, 'bin'), operf_micro_dir), log_fname)
+			use_addr_no_randomize_opt = '--use_addr_no_randomize' if args.use_addr_no_randomize else ''
+			completed_proc = shell_exec_redirect('%s/run_operf_micro.py --make_plots --results_timestamp %s --operf_binary %s %s %s %s %s'%(SCRIPTDIR, run_timestamp, OPERF_BINARY, use_addr_no_randomize_opt, verbose_args, os.path.join(builddir, 'bin'), operf_micro_dir), log_fname)
 			if completed_proc.returncode != 0:
 				print('ERROR[%d] in run_operf_micro for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 				continue

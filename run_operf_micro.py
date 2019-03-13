@@ -38,6 +38,7 @@ parser.add_argument('bindir', type=str, help='binary directory of ocaml compiler
 parser.add_argument('outdir', type=str, help='output directory for results')
 parser.add_argument('--results_timestamp', type=str, help='explicit timestamp to use', default=datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
 parser.add_argument('--benchmarks', type=str, help='comma seperated list of benchmarks to run', default=','.join(BENCHMARKS))
+parser.add_argument('--use_addr_no_randomize', action='store_true', help='Use addr_no_randomize option when running the benchmarks (Linux only)', default=False)
 parser.add_argument('--time_quota', help='time_quota for operf-micro (default: %s)'%DEFAULT_TIME_QUOTA, default=DEFAULT_TIME_QUOTA)
 parser.add_argument('--operf_binary', type=str, help='operf binary to use', default=OPERF_BINARY)
 parser.add_argument('--make_plots', action='store_true', help='create png plots', default=False)
@@ -85,7 +86,8 @@ shell_exec(operf_cmd('build'))
 for b in args.benchmarks.split(','):
 	try:
 		print('%s: running %s'%(str(datetime.datetime.now()), b))
-		shell_exec(operf_cmd('run --time-quota %s %s'%(args.time_quota, b)))
+		no_randomize_prefix = 'setarch `uname -m` --addr-no-randomize ' if args.use_addr_no_randomize else ''
+		shell_exec(no_randomize_prefix+operf_cmd('run --time-quota %s %s'%(args.time_quota, b)))
 		copy_out_results(tag, b, resultdir)
 		shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(resultdir, b))))
 		if args.make_plots:
