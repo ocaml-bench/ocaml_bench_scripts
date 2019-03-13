@@ -205,7 +205,7 @@ for h in hashes:
 	if 'operf' in args.run_stages:
 		if args.rerun_operf or not os.path.exists(operf_micro_dir) or not os.listdir(operf_micro_dir):
 			log_fname = os.path.join(hashdir, 'operf_%s.log'%run_timestamp)
-			completed_proc = shell_exec_redirect('%s/run_operf_micro.py --results_timestamp %s --operf_binary %s %s %s %s'%(SCRIPTDIR, run_timestamp, OPERF_BINARY, verbose_args, os.path.join(builddir, 'bin'), operf_micro_dir), log_fname)
+			completed_proc = shell_exec_redirect('%s/run_operf_micro.py --make_plots --results_timestamp %s --operf_binary %s %s %s %s'%(SCRIPTDIR, run_timestamp, OPERF_BINARY, verbose_args, os.path.join(builddir, 'bin'), operf_micro_dir), log_fname)
 			if completed_proc.returncode != 0:
 				print('ERROR[%d] in run_operf_micro for %s (see %s)'%(completed_proc.returncode, h, log_fname))
 				continue

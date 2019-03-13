@@ -29,6 +29,10 @@ BENCHMARKS = [
 	]
 DEFAULT_TIME_QUOTA = 5.0
 
+## TODO: make time quotas a lookup for: Short, Long, Longer
+## TODO: make benchmarks a lookup of the type: 'almabench' -> {'Short'}
+## TODO: how to specify these through the command line... almabench:Short,nucleic:Long,...
+
 parser = argparse.ArgumentParser(description='Run operf-micro and collate results')
 parser.add_argument('bindir', type=str, help='binary directory of ocaml compiler to use')
 parser.add_argument('outdir', type=str, help='output directory for results')
@@ -36,6 +40,7 @@ parser.add_argument('--results_timestamp', type=str, help='explicit timestamp to
 parser.add_argument('--benchmarks', type=str, help='comma seperated list of benchmarks to run', default=','.join(BENCHMARKS))
 parser.add_argument('--time_quota', help='time_quota for operf-micro (default: %s)'%DEFAULT_TIME_QUOTA, default=DEFAULT_TIME_QUOTA)
 parser.add_argument('--operf_binary', type=str, help='operf binary to use', default=OPERF_BINARY)
+parser.add_argument('--make_plots', action='store_true', help='create png plots', default=False)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
@@ -83,6 +88,10 @@ for b in args.benchmarks.split(','):
 		shell_exec(operf_cmd('run --time-quota %s %s'%(args.time_quota, b)))
 		copy_out_results(tag, b, resultdir)
 		shell_exec(operf_cmd('results %s --selected %s --more-yaml > %s.summary'%(tag, b, os.path.join(resultdir, b))))
+		if args.make_plots:
+			shell_exec(operf_cmd('plot --png %s %s'%(b, tag)))
+			plotdir = os.path.join(resultdir, 'plot')
+			shell_exec('mkdir -p %s && mv %s/.operf/micro/plot/*.png %s'%(plotdir, resultdir, plotdir))
 	except Exception as e:
 		print('ERROR: operf run failed for %s'%b)
 		print(e)
