@@ -125,7 +125,8 @@ elif args.commit_choice_method == 'status_success':
 
 
 elif args.commit_choice_method.startswith('hash='):
-	hashes = [args.commit_choice_method.split('=')[1]]
+	hashes = args.commit_choice_method.split('=')[1]
+	hashes = hashes.split(',')
 
 elif args.commit_choice_method.startswith('delay=') or args.commit_choice_method == 'all':
 	# Need to batch the commits that happen on the same timestamp:
