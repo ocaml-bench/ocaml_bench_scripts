@@ -42,6 +42,7 @@ parser.add_argument('--use_addr_no_randomize', action='store_true', help='Use ad
 parser.add_argument('--time_quota', help='time_quota for operf-micro (default: %s)'%DEFAULT_TIME_QUOTA, default=DEFAULT_TIME_QUOTA)
 parser.add_argument('--operf_binary', type=str, help='operf binary to use', default=OPERF_BINARY)
 parser.add_argument('--make_plots', action='store_true', help='create png plots', default=False)
+parser.add_argument('--no_clean', action='store_true', help='don\'t cleanup the .operf directories after running', default=False)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
@@ -79,7 +80,6 @@ def copy_out_results(tag, benchmark, resultdir):
 		print('ERROR: failed to find runs in %s'%operf_results_tag_dir)
 
 
-shell_exec(operf_cmd('clean'), check=False) ## TODO: sometimes this fails, what is the correct thing to do?
 shell_exec(operf_cmd('init --bin-dir %s %s'%(bindir, tag)))
 shell_exec(operf_cmd('build'))
 
@@ -97,3 +97,7 @@ for b in args.benchmarks.split(','):
 	except Exception as e:
 		print('ERROR: operf run failed for %s'%b)
 		print(e)
+
+if not args.no_clean:
+	shell_exec(operf_cmd('clean'), check=False)
+	shell_exec('rm -rf %s'%os.path.join(os.path.expanduser('~'), '.operf', 'micro', tag))
