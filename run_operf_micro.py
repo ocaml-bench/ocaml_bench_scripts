@@ -16,7 +16,7 @@ BENCHMARKS = [
 	'bigarray_rev',
 	'fibonnaci',
 	'lens',
-	'vector_functor',
+	##'vector_functor', NB: not obvious this one is doing enough to be sensible to run
 	'kahan_sum',
 	'hamming', ## TODO: need a way to tag this as 'long'
 	'sieve',
