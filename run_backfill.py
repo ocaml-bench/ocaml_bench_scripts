@@ -87,7 +87,7 @@ shell_exec('git checkout %s'%args.branch)
 if args.repo_pull:
 	shell_exec('git pull')
 
-commit_xtra_args = ''
+commit_xtra_args = ' --date=local'
 if args.commit_after:
 	commit_xtra_args += ' --after %s'%args.commit_after
 if args.commit_before:
