@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set +x
 
@@ -43,3 +43,17 @@ for i in {0..7}; do
 	echo $CMD
 	time ./$CMD
 done
+
+# also can get funny stuff with filename as well because it will change the code layout
+cp $SRC $BUILDDIR/aaa_$SRC
+$OCAMLOPT $BUILDDIR/aaa_$SRC -o $BUILDDIR/aaa_${SRC%.ml}
+
+cp $SRC $BUILDDIR/zzz_$SRC
+$OCAMLOPT $BUILDDIR/zzz_$SRC -o $BUILDDIR/zzz_${SRC%.ml}
+
+for i in aaa zzz; do
+	CMD=${BUILDDIR}/${i}_${SRC%.ml}
+	echo $CMD
+	time ./$CMD
+done
+
