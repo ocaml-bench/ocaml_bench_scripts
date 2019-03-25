@@ -8,11 +8,12 @@ let interval_tail_rec i j =
   in
   aux [] i j
 
+let foo x =
+  (**** function pad ****)
+  x
 
 (**** fold_left ****)
-
 let fold_left_while f acc l =
-  (**** function pad ****)
   let acc = ref acc in
   let l = ref l in
   let continue = ref true in
