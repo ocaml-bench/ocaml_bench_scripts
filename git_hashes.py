@@ -9,7 +9,6 @@ import sys
 def parseISO8601Likedatetime(s):
 	return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S %z")
 
-
 def get_git_hashes(args):
 	def shell_exec(cmd, verbose=args.verbose, check=False, stdout=None, stderr=None):
 		if verbose:
@@ -23,6 +22,8 @@ def get_git_hashes(args):
 	if args.repo_pull:
 		shell_exec('git pull')
 
+	# git date notes:
+	#   https://docs.microsoft.com/en-us/azure/devops/repos/git/git-dates?view=azure-devops
 	commit_xtra_args = ' --date=local'
 	if args.commit_after:
 		commit_xtra_args += ' --after %s'%args.commit_after
@@ -30,6 +31,9 @@ def get_git_hashes(args):
 		commit_xtra_args += ' --before %s'%args.commit_before
 
 	commit_path = '%s..'%args.main_branch if args.main_branch != args.branch else ''
+
+	# first parent notes:
+	#   http://www.davidchudzicki.com/posts/first-parent/
 	first_parent = '' if args.no_first_parent else '--first-parent'
 
 	if args.commit_choice_method == 'version_tags':
