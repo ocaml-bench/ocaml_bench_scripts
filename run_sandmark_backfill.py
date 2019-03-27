@@ -100,7 +100,7 @@ for h in hashes:
 	sandmark_dir = os.path.join(hashdir, 'sandmark')
 
 	if 'setup' in args.run_stages:
-		if os.path.isfile(os.path.join(builddir, 'sandmark_dir')):
+		if os.path.exists(sandmark_dir):
 			print('Skipping sandmark setup for %s as directory there'%h)
 		else:
 			## setup sandmark (make a clone and change the hash)
@@ -123,8 +123,8 @@ for h in hashes:
 		## move results to store them
 		resultsdir = os.path.join(hashdir, 'results')
 		shell_exec('mkdir -p %s'%resultsdir)
-		src_file = os.path.join(sandmark_dir, version_tag)
-		shell_exec('cp %s %s'%(src_file, os.path.join(resultsdir, '%s_%s.bench'%(run_timestamp, os.path.basename(src_file)))))
+		src_file = os.path.join(sandmark_dir, '%s.bench'%version_tag)
+		shell_exec('cp %s %s'%(src_file, os.path.join(resultsdir, '%s_%s'%(run_timestamp, os.path.basename(src_file)))))
 
 		## cleanup sandmark directory
 		if not args.sandmark_no_cleanup:
