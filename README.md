@@ -20,6 +20,12 @@ These scripts currently expect a couple of things in some default locations:
     ./configure --prefix=`pwd`/opt && make && make install 
    	```
 
+  - a copy of sandmark
+  ```console
+  cd <ocaml_bench_scripts location>
+  git clone https://github.com/ocamllabs/sandmark sandmark
+  ```
+
 NB: to get the output of the scripts to interleave correctly, you want `PYTHONUNBUFFERED=TRUE` in the environment
 (sadly adding python -u to the shebang doesn't work on Linux)
 
