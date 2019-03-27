@@ -12,6 +12,8 @@ Alignment effect are a known problem for compiler developers. There is a LLVM ta
 
 A C++ example is presented here https://dendibakh.github.io/blog/2018/01/18/Code_alignment_issues
 
+A useful tool for getting at perf counters on linux is pmu-tools: https://github.com/andikleen/pmu-tools
+
 Potentially interesting perf stat counters if you want to take this further are:
  - idq_uops_not_delivered_core (which measures when there are no uops to schedule as we are waiting)
  - dsb2mite_switches_count (switching between DSB and old MITE for looking up uops)
