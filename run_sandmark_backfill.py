@@ -23,7 +23,6 @@ ENVIRONMENT = 'macbook'
 
 parser = argparse.ArgumentParser(description='Run sandmark benchmarks and upload them for a backfill')
 parser.add_argument('outdir', type=str, help='directory of output')
-
 parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo (default: %s)'%REPO, default=REPO)
 parser.add_argument('--branch', type=str, help='git branch for the compiler (default: %s)'%DEFAULT_BRANCH, default=DEFAULT_BRANCH)
 parser.add_argument('--main_branch', type=str, help='name of mainline git branch for compiler (default: %s)'%DEFAULT_MAIN_BRANCH, default=DEFAULT_MAIN_BRANCH)
@@ -35,23 +34,19 @@ parser.add_argument('--commit_after', type=str, help='select commits after the s
 parser.add_argument('--commit_before', type=str, help='select commits before the specified date (e.g. 2017-10-02)', default=None)
 parser.add_argument('--github_oauth_token', type=str, help='oauth token for github api', default=None)
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
-
 parser.add_argument('--sandmark_repo', type=str, help='sandmark repo location', default=SANDMARK_REPO)
 parser.add_argument('--sandmark_comp_fmt', type=str, help='sandmark location format compiler code', default=SANDMARK_COMP_FMT_DEFAULT)
 parser.add_argument('--sandmark_iter', type=int, help='number of sandmark iterations', default=1)
 parser.add_argument('--sandmark_pre_exec', type=str, help='benchmark pre_exec', default='')
 parser.add_argument('--sandmark_no_cleanup', action='store_true', default=False)
-
 parser.add_argument('--run_stages', type=str, help='stages to run', default='setup,bench,upload')
 
 parser.add_argument('--executable_spec', type=str, help='name for executable and configure_args for build in "name:configure_args" fmt (e.g. flambda:--enable_flambda)', default='vanilla:')
-
 parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
-
 parser.add_argument('--upload_project_name', type=str, help='specific upload project name (default is ocaml_<branch name>', default=None)
 parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
 parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
-parser.add_argument('-j', '--jobs', type=int, help='number of concurrent jobs during build', default=1)
+
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
@@ -100,18 +95,21 @@ for h in hashes:
 	if args.verbose: print('processing to %s'%hashdir)
 	shell_exec('mkdir -p %s'%hashdir)
 
+	## TODO: we need to somehow get the '.0' more correctly
 	version_tag = os.path.join('ocaml-versions', '%s.0'%args.branch)
 	sandmark_dir = os.path.join(hashdir, 'sandmark')
 
 	if 'setup' in args.run_stages:
-		## setup sandmark (make a clone and change the hash)
-		shell_exec('git clone --reference %s %s %s'%(args.sandmark_repo, args.sandmark_repo, sandmark_dir))
-		## TODO: we need to somehow
-		comp_file = os.path.join(sandmark_dir, '%s.comp'%version_tag)
-		if args.verbose:
-			print('writing hash information to: %s'%comp_file)
-		with open(comp_file, 'w') as f:
-			f.write(args.sandmark_comp_fmt.format(**{'tag': h}))
+		if os.path.isfile(os.path.join(builddir, 'sandmark_dir')):
+			print('Skipping sandmark setup for %s as directory there'%h)
+		else:
+			## setup sandmark (make a clone and change the hash)
+			shell_exec('git clone --reference %s %s %s'%(args.sandmark_repo, args.sandmark_repo, sandmark_dir))
+			comp_file = os.path.join(sandmark_dir, '%s.comp'%version_tag)
+			if args.verbose:
+				print('writing hash information to: %s'%comp_file)
+			with open(comp_file, 'w') as f:
+				f.write(args.sandmark_comp_fmt.format(**{'tag': h}))
 
 	if 'bench' in args.run_stages:
 		## run bench
@@ -119,7 +117,8 @@ for h in hashes:
 		completed_proc = shell_exec_redirect('cd %s; make %s.bench ITER=%i PRE_BENCH_EXEC=%s'%(sandmark_dir, version_tag, args.sandmark_iter, args.sandmark_pre_exec), log_fname)
 		if completed_proc.returncode != 0:
 			print('ERROR[%d] in sandmark bench run for %s (see %s)'%(completed_proc.returncode, h, log_fname))
-			continue
+			## TODO: the error isn't fatal, just that something failed in there...
+			#continue
 
 		## move results to store them
 		resultsdir = os.path.join(hashdir, 'results')
