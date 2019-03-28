@@ -43,13 +43,11 @@ parser.add_argument('--sandmark_iter', type=int, help='number of sandmark iterat
 parser.add_argument('--sandmark_pre_exec', type=str, help='benchmark pre_exec', default='')
 parser.add_argument('--sandmark_no_cleanup', action='store_true', default=False)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='setup,bench,upload')
-
 parser.add_argument('--executable_spec', type=str, help='name for executable and variant for build in "name:variant" fmt (e.g. flambda:flambda)', default='vanilla:')
 parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
 parser.add_argument('--upload_project_name', type=str, help='specific upload project name (default is ocaml_<branch name>', default=None)
 parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
 parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
-
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()

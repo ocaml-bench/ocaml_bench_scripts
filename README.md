@@ -19,10 +19,10 @@ These scripts currently expect a couple of things in some default locations:
     cd operf-micro
     ./configure --prefix=`pwd`/opt && make && make install 
    	```
-  - a copy of sandmark
+  - a copy of sandmark:
     ```console
-  cd <ocaml_bench_scripts location>
-  git clone https://github.com/ocamllabs/sandmark sandmark
+cd <ocaml_bench_scripts location>
+git clone https://github.com/ocamllabs/sandmark sandmark
     ```
 
 NB: to get the output of the scripts to interleave correctly, you want `PYTHONUNBUFFERED=TRUE` in the environment
