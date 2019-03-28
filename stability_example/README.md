@@ -6,9 +6,9 @@ The script `stability_example.sh` pulls a known compiler hash where we change th
 
 Alignment effect are a known problem for compiler developers. There is a LLVM talk given by Zia Ansari https://www.youtube.com/watch?v=IX16gcX4vDQ&feature=youtu.be where he describes several effects including:
  - Decoder alignment
- - DSB Throughput alignment
- - DSB Threashing alignment
- - BPU alignment
+ - DSB Throughput and alignment
+ - DSB Thrashing and alignment
+ - BPU and alignment
 
 A C++ example is presented here https://dendibakh.github.io/blog/2018/01/18/Code_alignment_issues
 
