@@ -2,7 +2,7 @@
 
 The performance of a function can be affected by its code layout on modern x86 processors. This effect can be surprisingly large (10-20%) on some benchmarks.
 
-The script 'stability_example.sh' pulls a known compiler hash where we change the layout of 'fold_left_while_test.ml' by adding variables to a the dummy function 'foo'. On our E5-2430L v2 (Ivy-Bridge) machine where we have isolated the CPUs, we see very stable times for each binary but very different run times for each binary between (0.96s and 1.12s). 
+The script `stability_example.sh` pulls a known compiler hash where we change the layout of `fold_left_while_test.ml` by adding variables to a the dummy function `foo`. On our E5-2430L v2 (Ivy-Bridge) machine where we have isolated the CPUs, we see very stable times for each binary but very different run times for each binary between (0.96s and 1.12s). 
 
 Alignment effect are a known problem for compiler developers. There is a LLVM talk given by Zia Ansari https://www.youtube.com/watch?v=IX16gcX4vDQ&feature=youtu.be where he describes several effects including:
  - Decoder alignment
