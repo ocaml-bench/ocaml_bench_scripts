@@ -19,7 +19,6 @@ These scripts currently expect a couple of things in some default locations:
     cd operf-micro
     ./configure --prefix=`pwd`/opt && make && make install 
    	```
-
   - a copy of sandmark
     ```console
   cd <ocaml_bench_scripts location>
