@@ -2,15 +2,18 @@
 
 import argparse
 import datetime
+import glob
 import inspect
+import json
 import os
+import pandas
 import subprocess
-import yaml
 
 import git_hashes
+import codespeed_upload
 
 def get_script_dir():
- 	return os.path.dirname(inspect.getabsfile(get_script_dir))
+    return os.path.dirname(inspect.getabsfile(get_script_dir))
 
 SCRIPTDIR = get_script_dir()
 REPO = os.path.join(SCRIPTDIR, 'ocaml')
@@ -41,7 +44,7 @@ parser.add_argument('--sandmark_pre_exec', type=str, help='benchmark pre_exec', 
 parser.add_argument('--sandmark_no_cleanup', action='store_true', default=False)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='setup,bench,upload')
 
-parser.add_argument('--executable_spec', type=str, help='name for executable and configure_args for build in "name:configure_args" fmt (e.g. flambda:--enable_flambda)', default='vanilla:')
+parser.add_argument('--executable_spec', type=str, help='name for executable and variant for build in "name:variant" fmt (e.g. flambda:flambda)', default='vanilla:')
 parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
 parser.add_argument('--upload_project_name', type=str, help='specific upload project name (default is ocaml_<branch name>', default=None)
 parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
@@ -52,24 +55,60 @@ parser.add_argument('-v', '--verbose', action='store_true', default=False)
 args = parser.parse_args()
 
 def shell_exec(cmd, verbose=args.verbose, check=False, stdout=None, stderr=None):
-	if verbose:
-		print('+ %s'%cmd)
-	return subprocess.run(cmd, shell=True, check=check, stdout=stdout, stderr=stderr)
+    if verbose:
+        print('+ %s'%cmd)
+    return subprocess.run(cmd, shell=True, check=check, stdout=stdout, stderr=stderr)
 
 
 def shell_exec_redirect(cmd, fname, verbose=args.verbose, check=False):
-	if verbose:
-		print('+ %s'%cmd)
-		print('+ with stdout/stderr -> %s'% fname)
-	with open(fname, 'w') as f:
-		return shell_exec(cmd, verbose=False, check=check, stdout=f, stderr=subprocess.STDOUT)
+    if verbose:
+        print('+ %s'%cmd)
+        print('+ with stdout/stderr -> %s'% fname)
+    with open(fname, 'w') as f:
+        return shell_exec(cmd, verbose=False, check=check, stdout=f, stderr=subprocess.STDOUT)
 
 
-def write_context(context, fname, verbose=args.verbose):
-	s = yaml.dump(context, default_flow_style=False)
-	if verbose:
-		print('writing context to %s: \n%s'%(fname, s))
-	print(s, file=open(fname, 'w'))
+def parse_and_format_results_for_upload(fname):
+    bench_data = []
+    with open(fname) as f:
+        for l in f:
+            raw_data = json.loads(l)
+            bench_data.append({
+                'name': raw_data['name'],
+                'time_secs': raw_data['time_secs'],
+                'user_time_secs': raw_data['user_time_secs'],
+                'gc.minor_collections': raw_data['gc']['minor_collections'],
+                'gc.major_collections': raw_data['gc']['major_collections'],
+                'gc.compactions': raw_data['gc']['compactions'],
+                })
+    bench_data = pandas.DataFrame(bench_data)
+    aggregated_data = bench_data.groupby('name').apply(lambda x: x.describe().T)
+    aggregated_data.index.set_names(['bench_name', 'bench_metric'], inplace=True)
+
+    upload_data = []
+    for bench_name in aggregated_data.index.levels[0]:
+        # TODO: how to make this configurable
+        metric_name, metric_units, metric_units_title = ('user_time_secs', 'seconds', 'Time')
+
+        results = aggregated_data.loc[(bench_name, 'user_time_secs')]
+        upload_data.append({
+            'commitid': h[:7],
+            'commitid_long': h,
+            'project': args.upload_project_name if args.upload_project_name else 'ocaml_%s'%args.branch,
+            'branch': args.branch,
+            'executable': executable_name,
+            'executable_description': full_branch_tag,
+            'environment': args.environment,
+            'benchmark': bench_name,
+            'units': metric_units,
+            'units_title': metric_units_title,
+            'result_value': results['mean'],
+            'min': results['min'],
+            'max': results['max'],
+            'std_dev': results['std'],
+            })
+
+    return upload_data
 
 
 run_timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -86,51 +125,76 @@ shell_exec('mkdir -p %s'%outdir)
 hashes = git_hashes.get_git_hashes(args)
 
 if args.verbose:
-	print('Found %d hashes using %s to do %s on'%(len(hashes), args.commit_choice_method, args.run_stages))
+    print('Found %d hashes using %s to do %s on'%(len(hashes), args.commit_choice_method, args.run_stages))
 
 verbose_args = ' -v' if args.verbose else ''
 os.chdir(outdir)
 for h in hashes:
-	hashdir = os.path.join(outdir, h)
-	if args.verbose: print('processing to %s'%hashdir)
-	shell_exec('mkdir -p %s'%hashdir)
+    hashdir = os.path.join(outdir, h)
+    if args.verbose: print('processing to %s'%hashdir)
+    shell_exec('mkdir -p %s'%hashdir)
 
-	## TODO: we need to somehow get the '.0' more correctly
-	version_tag = os.path.join('ocaml-versions', '%s.0'%args.branch)
-	sandmark_dir = os.path.join(hashdir, 'sandmark')
+    executable_name, executable_variant = args.executable_spec.split(':')
 
-	if 'setup' in args.run_stages:
-		if os.path.exists(sandmark_dir):
-			print('Skipping sandmark setup for %s as directory there'%h)
-		else:
-			## setup sandmark (make a clone and change the hash)
-			shell_exec('git clone --reference %s %s %s'%(args.sandmark_repo, args.sandmark_repo, sandmark_dir))
-			comp_file = os.path.join(sandmark_dir, '%s.comp'%version_tag)
-			if args.verbose:
-				print('writing hash information to: %s'%comp_file)
-			with open(comp_file, 'w') as f:
-				f.write(args.sandmark_comp_fmt.format(**{'tag': h}))
+    ## TODO: we need to somehow get the '.0' more correctly
+    full_branch_tag = '%s.0'%args.branch
+    if executable_variant:
+        full_branch_tag += '+' + executable_variant
+    version_tag = os.path.join('ocaml-versions', full_branch_tag)
+    sandmark_dir = os.path.join(hashdir, 'sandmark')
 
-	if 'bench' in args.run_stages:
-		## run bench
-		log_fname = os.path.join(hashdir, 'bench_%s.log'%run_timestamp)
-		completed_proc = shell_exec_redirect('cd %s; make %s.bench ITER=%i PRE_BENCH_EXEC=%s'%(sandmark_dir, version_tag, args.sandmark_iter, args.sandmark_pre_exec), log_fname)
-		if completed_proc.returncode != 0:
-			print('ERROR[%d] in sandmark bench run for %s (see %s)'%(completed_proc.returncode, h, log_fname))
-			## TODO: the error isn't fatal, just that something failed in there...
-			#continue
+    if 'setup' in args.run_stages:
+        if os.path.exists(sandmark_dir):
+            print('Skipping sandmark setup for %s as directory there'%h)
+        else:
+            ## setup sandmark (make a clone and change the hash)
+            shell_exec('git clone --reference %s %s %s'%(args.sandmark_repo, args.sandmark_repo, sandmark_dir))
+            comp_file = os.path.join(sandmark_dir, '%s.comp'%version_tag)
+            if args.verbose:
+                print('writing hash information to: %s'%comp_file)
+            with open(comp_file, 'w') as f:
+                f.write(args.sandmark_comp_fmt.format(**{'tag': h}))
 
-		## move results to store them
-		resultsdir = os.path.join(hashdir, 'results')
-		shell_exec('mkdir -p %s'%resultsdir)
-		src_file = os.path.join(sandmark_dir, '%s.bench'%version_tag)
-		shell_exec('cp %s %s'%(src_file, os.path.join(resultsdir, '%s_%s'%(run_timestamp, os.path.basename(src_file)))))
+    if 'bench' in args.run_stages:
+        ## run bench
+        log_fname = os.path.join(hashdir, 'bench_%s.log'%run_timestamp)
+        completed_proc = shell_exec_redirect('cd %s; make %s.bench ITER=%i PRE_BENCH_EXEC=%s'%(sandmark_dir, version_tag, args.sandmark_iter, args.sandmark_pre_exec), log_fname)
+        if completed_proc.returncode != 0:
+            print('ERROR[%d] in sandmark bench run for %s (see %s)'%(completed_proc.returncode, h, log_fname))
+            ## TODO: the error isn't fatal, just that something failed in there...
+            #continue
 
-		## cleanup sandmark directory
-		if not args.sandmark_no_cleanup:
-			shell_exec('cd %s; make clean'%sandmark_dir)
+        ## move results to store them
+        resultsdir = os.path.join(hashdir, 'results')
+        shell_exec('mkdir -p %s'%resultsdir)
+        src_file = os.path.join(sandmark_dir, '%s.bench'%version_tag)
+        shell_exec('cp %s %s'%(src_file, os.path.join(resultsdir, '%s_%s'%(run_timestamp, os.path.basename(src_file)))))
 
-	if 'upload' in args.run_stages:
-		## upload
-		## TODO: upload this stuff into the codespeed server
-		print('TODO: upload')
+        ## cleanup sandmark directory
+        if not args.sandmark_no_cleanup:
+            shell_exec('cd %s; make clean'%sandmark_dir)
+
+    if 'upload' in args.run_stages:
+        ## upload
+        resultdir = os.path.join(hashdir, 'results')
+        if args.upload_date_tag:
+            fname = os.path.join(resultdir, '%s_%s.bench'%(args.upload_date_tag, full_branch_tag))
+            if not os.path.exists(fname):
+                print('ERROR: could not upload as could not find %s'%fname)
+                continue
+        else:
+            glob_pat = '%s/*_%s.bench'%(resultdir, full_branch_tag)
+            fnames = sorted(glob.glob(glob_pat))
+            if not fnames:
+                print('ERROR: could not find any results of form %s to upload'%glob_pat)
+                continue
+
+            fname = fnames[-1]
+
+        print('Uploading data from %s'%fname)
+
+        upload_data = parse_and_format_results_for_upload(fname)
+
+        ## upload this stuff into the codespeed server
+        codespeed_upload.post_data_to_server(args.codespeed_url, upload_data, verbose=args.verbose)
+
