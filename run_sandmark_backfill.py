@@ -79,6 +79,10 @@ def parse_and_format_results_for_upload(fname):
                 'gc.major_collections': raw_data['gc']['major_collections'],
                 'gc.compactions': raw_data['gc']['compactions'],
                 })
+    if not bench_data:
+        print('WARN: Failed to find any data in %s'%fname)
+        return []
+
     bench_data = pandas.DataFrame(bench_data)
     aggregated_data = bench_data.groupby('name').apply(lambda x: x.describe().T)
     aggregated_data.index.set_names(['bench_name', 'bench_metric'], inplace=True)
@@ -194,5 +198,6 @@ for h in hashes:
         upload_data = parse_and_format_results_for_upload(fname)
 
         ## upload this stuff into the codespeed server
-        codespeed_upload.post_data_to_server(args.codespeed_url, upload_data, verbose=args.verbose)
+        if upload_data:
+            codespeed_upload.post_data_to_server(args.codespeed_url, upload_data, verbose=args.verbose)
 
