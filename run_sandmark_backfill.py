@@ -86,9 +86,9 @@ def parse_and_format_results_for_upload(fname):
     upload_data = []
     for bench_name in aggregated_data.index.levels[0]:
         # TODO: how to make this configurable
-        metric_name, metric_units, metric_units_title = ('user_time_secs', 'seconds', 'Time')
+        metric_name, metric_units, metric_units_title = ('time_secs', 'seconds', 'Time')
 
-        results = aggregated_data.loc[(bench_name, 'user_time_secs')]
+        results = aggregated_data.loc[(bench_name, 'time_secs')]
         upload_data.append({
             'commitid': h[:7],
             'commitid_long': h,
