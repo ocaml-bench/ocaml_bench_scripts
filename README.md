@@ -20,7 +20,7 @@ These scripts currently expect a couple of things in some default locations:
     ./configure --prefix=`pwd`/opt && make && make install 
    	```
   - a copy of sandmark:
-    ```console
+    ```
   cd <ocaml_bench_scripts location>
   git clone https://github.com/ocamllabs/sandmark sandmark
     ```

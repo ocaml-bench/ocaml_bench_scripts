@@ -42,6 +42,7 @@ parser.add_argument('--sandmark_comp_fmt', type=str, help='sandmark location for
 parser.add_argument('--sandmark_iter', type=int, help='number of sandmark iterations', default=1)
 parser.add_argument('--sandmark_pre_exec', type=str, help='benchmark pre_exec', default='')
 parser.add_argument('--sandmark_no_cleanup', action='store_true', default=False)
+parser.add_argument('--sandmark_tag_override', help='set the sandmark version tag manually (e.g. 4.06.1)', default=None)
 parser.add_argument('--run_stages', type=str, help='stages to run', default='setup,bench,upload')
 parser.add_argument('--executable_spec', type=str, help='name for executable and variant for build in "name:variant" fmt (e.g. flambda:flambda)', default='vanilla:')
 parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
@@ -138,8 +139,11 @@ for h in hashes:
 
     executable_name, executable_variant = args.executable_spec.split(':')
 
-    ## TODO: we need to somehow get the '.0' more correctly
-    full_branch_tag = '%s.0'%args.branch
+    if args.sandmark_tag_override:
+        full_branch_tag = args.sandmark_tag_override
+    else:
+        ## TODO: we need to somehow get the '.0' more correctly
+        full_branch_tag = '%s.0'%args.branch
     if executable_variant:
         full_branch_tag += '+' + executable_variant
     version_tag = os.path.join('ocaml-versions', full_branch_tag)
