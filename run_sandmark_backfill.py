@@ -78,7 +78,7 @@ def parse_and_format_results_for_upload(fname):
                 'user_time_secs': raw_data['user_time_secs'],
                 'gc.minor_collections': raw_data['gc']['minor_collections'],
                 'gc.major_collections': raw_data['gc']['major_collections'],
-                'gc.compactions': raw_data['gc']['compactions'],
+                'gc.compactions': raw_data['gc'].get('compactions', 0),
                 })
     if not bench_data:
         print('WARN: Failed to find any data in %s'%fname)
