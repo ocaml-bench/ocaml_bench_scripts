@@ -22,7 +22,7 @@ ENVIRONMENT = 'macbook'
 
 parser = argparse.ArgumentParser(description='Build ocaml binaries, benchmarks and upload them for a backfill')
 parser.add_argument('outdir', type=str, help='directory of output')
-parser.add_argument('--repo', type=str, help='local location of ocmal compiler repo (default: %s)'%REPO, default=REPO)
+parser.add_argument('--repo', type=str, help='local location of ocaml compiler repo (default: %s)'%REPO, default=REPO)
 parser.add_argument('--branch', type=str, help='git branch for the compiler (default: %s)'%DEFAULT_BRANCH, default=DEFAULT_BRANCH)
 parser.add_argument('--main_branch', type=str, help='name of mainline git branch for compiler (default: %s)'%DEFAULT_MAIN_BRANCH, default=DEFAULT_MAIN_BRANCH)
 parser.add_argument('--repo_pull', action='store_true', help="do a pull on the git repo before selecting hashes", default=False)
@@ -79,8 +79,8 @@ if args.verbose: print('making directory: %s'%outdir)
 shell_exec('mkdir -p %s'%outdir)
 
 ## generate list of hash commits
-hashes = git_hashes.get_git_hashes(args)
 repo_path = os.path.abspath(args.repo)
+hashes = git_hashes.get_git_hashes(args)
 
 if args.verbose:
 	print('Found %d hashes using %s to do %s on'%(len(hashes), args.commit_choice_method, args.run_stages))

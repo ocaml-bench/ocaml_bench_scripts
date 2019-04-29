@@ -15,6 +15,7 @@ def get_git_hashes(args):
 			print('+ %s'%cmd)
 		return subprocess.run(cmd, shell=True, check=check, stdout=stdout, stderr=stderr)
 
+	old_cwd = os.getcwd()
 	repo_path = os.path.abspath(args.repo)
 	if args.verbose: print('using repo: %s'%repo_path)
 	os.chdir(repo_path)
@@ -106,4 +107,5 @@ def get_git_hashes(args):
 	hashes = [ h for h in hashes if h ] # filter any null hashes
 	hashes = hashes[-args.max_hashes:]
 
+	os.chdir(old_cwd)
 	return hashes
