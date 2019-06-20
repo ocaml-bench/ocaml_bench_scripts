@@ -30,6 +30,7 @@ parser.add_argument('--repo', type=str, help='local location of ocmal compiler r
 parser.add_argument('--branch', type=str, help='git branch for the compiler (default: %s)'%DEFAULT_BRANCH, default=DEFAULT_BRANCH)
 parser.add_argument('--main_branch', type=str, help='name of mainline git branch for compiler (default: %s)'%DEFAULT_MAIN_BRANCH, default=DEFAULT_MAIN_BRANCH)
 parser.add_argument('--repo_pull', action='store_true', help="do a pull on the git repo before selecting hashes", default=False)
+parser.add_argument('--repo_reset_hard', action='store_true', help="after pulling a branch, reset it hard to the origin. Can need this for remote branches where they have been force pushed", default=False)
 parser.add_argument('--use_repo_reference', action='store_true', help="use reference to clone a local git repo", default=False)
 parser.add_argument('--no_first_parent', action='store_true', help="By default we use first-parent on git logs (to keep date ordering sane); this option turns it off", default=False)
 parser.add_argument('--commit_choice_method', type=str, help='commit choice method (version_tags, status_success, hash=XXX, delay=00:05:00, all)', default='version_tags')

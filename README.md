@@ -12,6 +12,7 @@ These scripts currently expect a couple of things in some default locations:
 	cd <ocaml_bench_scripts location>
     git clone https://github.com/ocaml/ocaml ocaml
     ```
+
   - a copy of operf-micro which supports the more_yaml option: 
   	```console
 	cd <ocaml_bench_scripts location>
@@ -19,6 +20,7 @@ These scripts currently expect a couple of things in some default locations:
     cd operf-micro
     ./configure --prefix=`pwd`/opt && make && make install 
    	```
+
   - a copy of sandmark:
     ```
   cd <ocaml_bench_scripts location>

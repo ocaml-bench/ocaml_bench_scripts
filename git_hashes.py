@@ -22,6 +22,8 @@ def get_git_hashes(args):
 	shell_exec('git checkout %s'%args.branch)
 	if args.repo_pull:
 		shell_exec('git pull')
+		if args.repo_reset_hard:
+			shell_exec('git reset --hard origin/%s'%args.branch)
 
 	# git date notes:
 	#   https://docs.microsoft.com/en-us/azure/devops/repos/git/git-dates?view=azure-devops
