@@ -44,15 +44,18 @@ parser.add_argument('--sandmark_iter', type=int, help='number of sandmark iterat
 parser.add_argument('--sandmark_pre_exec', type=str, help='benchmark pre_exec', default='')
 parser.add_argument('--sandmark_no_cleanup', action='store_true', default=False)
 parser.add_argument('--sandmark_tag_override', help='set the sandmark version tag manually (e.g. 4.06.1)', default=None)
-parser.add_argument('--run_stages', type=str, help='stages to run', default='setup,bench,upload')
+parser.add_argument('--run_stages', type=str, help='stages to run (setup,bench,archive,upload)', default='setup,bench,upload')
 parser.add_argument('--executable_spec', type=str, help='name for executable and variant for build in "name:variant" fmt (e.g. flambda:flambda)', default='vanilla:')
 parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
+parser.add_argument('--archive_dir', type=str, help='location to make archive', default=None)
 parser.add_argument('--upload_project_name', type=str, help='specific upload project name (default is ocaml_<branch name>', default=None)
 parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
 parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
+
+upload_project_name = args.upload_project_name if args.upload_project_name else 'ocaml_%s'%args.branch
 
 def shell_exec(cmd, verbose=args.verbose, check=False, stdout=None, stderr=None):
     if verbose:
@@ -67,6 +70,17 @@ def shell_exec_redirect(cmd, fname, verbose=args.verbose, check=False):
     with open(fname, 'w') as f:
         return shell_exec(cmd, verbose=False, check=check, stdout=f, stderr=subprocess.STDOUT)
 
+def use_bench_logfile_to_determine_timestamp(hashdir):
+    logfile_candidates = sorted(glob.glob(os.path.join(hashdir, 'bench_*.log')))
+    if len(logfile_candidates) == 0:
+        print('ERROR: could not find bench logfile for run timestamp')
+        return None
+
+    logfile = logfile_candidates[-1]
+    if len(logfile_candidates) > 1:
+        print('WARN: more than one logfile candidate for timestamp, so took last %s'%logfile)
+
+    return logfile, os.path.basename(logfile).lstrip('bench_').rstrip('.log')
 
 def parse_and_format_results_for_upload(fname):
     bench_data = []
@@ -98,7 +112,7 @@ def parse_and_format_results_for_upload(fname):
         upload_data.append({
             'commitid': h[:7],
             'commitid_long': h,
-            'project': args.upload_project_name if args.upload_project_name else 'ocaml_%s'%args.branch,
+            'project': upload_project_name,
             'branch': args.branch,
             'executable': executable_name,
             'executable_description': full_branch_tag,
@@ -125,6 +139,8 @@ outdir = os.path.abspath(args.outdir)
 if args.verbose: print('making directory: %s'%outdir)
 shell_exec('mkdir -p %s'%outdir)
 
+archive_dir = os.path.abspath(args.archive_dir) if not args.archive_dir is None else None
+
 ## generate list of hash commits
 hashes = git_hashes.get_git_hashes(args)
 
@@ -149,6 +165,7 @@ for h in hashes:
         full_branch_tag += '+' + executable_variant
     version_tag = os.path.join('ocaml-versions', full_branch_tag)
     sandmark_dir = os.path.join(hashdir, 'sandmark')
+    resultsdir = os.path.join(hashdir, 'results')
 
     if 'setup' in args.run_stages:
         if os.path.exists(sandmark_dir):
@@ -172,7 +189,6 @@ for h in hashes:
             #continue
 
         ## move results to store them
-        resultsdir = os.path.join(hashdir, 'results')
         shell_exec('mkdir -p %s'%resultsdir)
         src_file = os.path.join(sandmark_dir, '%s.bench'%version_tag)
         shell_exec('cp %s %s'%(src_file, os.path.join(resultsdir, '%s_%s'%(run_timestamp, os.path.basename(src_file)))))
@@ -180,6 +196,30 @@ for h in hashes:
         ## cleanup sandmark directory
         if not args.sandmark_no_cleanup:
             shell_exec('cd %s; make clean'%sandmark_dir)
+
+    if 'archive' in args.run_stages:
+        if (archive_dir is None) or (not os.path.exists(archive_dir)):
+            print('ERROR: could not archive as could not find %s'%archive_dir)
+        else:
+            ## figure the archive timestamp
+            archive_logfile, archive_timestamp = use_bench_logfile_to_determine_timestamp(hashdir)
+
+            archive_path = os.path.join(
+                archive_dir,
+                args.environment, ## environment (often hostname)
+                upload_project_name + '__' + args.branch, ## project name and branch (identifies github repo)
+                h, ## commit hash
+                executable_name, ## name of the executable variant (e.g. vanilla, flambda)
+                archive_timestamp ## timestamp fo the run
+                )
+
+            if args.verbose:
+                print('writing archive to: %s'%archive_path)
+
+            ## archive the data
+            shell_exec('mkdir -p %s'%archive_path)
+            shell_exec('cp %s %s'%(archive_logfile, os.path.join(archive_path, os.path.basename(archive_logfile))))
+            shell_exec('cp -r %s/* %s'%(resultsdir, archive_path))
 
     if 'upload' in args.run_stages:
         ## upload
