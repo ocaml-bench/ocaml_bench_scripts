@@ -34,7 +34,7 @@ parser.add_argument('--commit_after', type=str, help='select commits after the s
 parser.add_argument('--commit_before', type=str, help='select commits before the specified date (e.g. 2017-10-02)', default=None)
 parser.add_argument('--github_oauth_token', type=str, help='oauth token for github api', default=None)
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
-parser.add_argument('--run_stages', type=str, help='stages to run', default='build,operf,upload')
+parser.add_argument('--run_stages', type=str, help='stages to run (e.g. build,operf,upload,ocaml_cleanup)', default='build,operf,upload')
 parser.add_argument('--executable_spec', type=str, help='name for executable and configure_args for build in "name:configure_args" fmt (e.g. flambda:--enable_flambda)', default='vanilla:')
 parser.add_argument('--use_addr_no_randomize', action='store_true', help='use addr_no_randomize to run the operf benchmarks (Linux only)', default=False)
 parser.add_argument('--rerun_operf', action='store_true', help='regenerate operf results with rerun if already present', default=False)
@@ -142,6 +142,10 @@ for h in hashes:
 			shell_exec('cp %s %s'%(build_context_fname, os.path.join(resultdir, 'build_context.conf')))
 		else:
 			print('Skipping operf run for %s as already have results %s'%(h, os.listdir(operf_micro_dir)))
+
+	## cleanup the ocaml binaries
+	if 'ocaml_cleanup' in args.run_stages:
+		shell_exec('rm -rf %s %s'%(os.path.join(builddir, 'bin'), os.path.join(builddir, 'lib')))
 
 	## upload commit
 	if 'upload' in args.run_stages:
