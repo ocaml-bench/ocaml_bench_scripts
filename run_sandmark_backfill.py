@@ -82,7 +82,7 @@ def use_bench_logfile_to_determine_timestamp(hashdir):
 
     return logfile, os.path.basename(logfile).lstrip('bench_').rstrip('.log')
 
-def parse_and_format_results_for_upload(fname):
+def parse_and_format_results_for_upload(fname, artifacts_timestamp):
     bench_data = []
     with open(fname) as f:
         for l in f:
@@ -124,6 +124,7 @@ def parse_and_format_results_for_upload(fname):
             'min': results['min'],
             'max': results['max'],
             'std_dev': results['std'],
+            'metadata': {'artifacts_location': '%s/%s__%s/%s/%s/%s/'%(args.environment, upload_project_name, args.branch, h, executable_name, artifacts_timestamp)},
             })
 
     return upload_data
@@ -225,22 +226,19 @@ for h in hashes:
         ## upload
         resultdir = os.path.join(hashdir, 'results')
         if args.upload_date_tag:
-            fname = os.path.join(resultdir, '%s_%s.bench'%(args.upload_date_tag, full_branch_tag))
-            if not os.path.exists(fname):
-                print('ERROR: could not upload as could not find %s'%fname)
-                continue
+            upload_timestamp = args.upload_date_tag
         else:
-            glob_pat = '%s/*_%s.bench'%(resultdir, full_branch_tag)
-            fnames = sorted(glob.glob(glob_pat))
-            if not fnames:
-                print('ERROR: could not find any results of form %s to upload'%glob_pat)
-                continue
+            ## figure the upload timestamp
+            _, upload_timestamp = use_bench_logfile_to_determine_timestamp(hashdir)
 
-            fname = fnames[-1]
+        fname = os.path.join(resultdir, '%s_%s.bench'%(upload_timestamp, full_branch_tag))
+        if not os.path.exists(fname):
+            print('ERROR: could not upload as could not find %s'%fname)
+            continue
 
         print('Uploading data from %s'%fname)
 
-        upload_data = parse_and_format_results_for_upload(fname)
+        upload_data = parse_and_format_results_for_upload(fname, upload_timestamp)
 
         ## upload this stuff into the codespeed server
         if upload_data:
