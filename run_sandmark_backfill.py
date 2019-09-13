@@ -47,7 +47,7 @@ parser.add_argument('--sandmark_tag_override', help='set the sandmark version ta
 parser.add_argument('--run_stages', type=str, help='stages to run (setup,bench,archive,upload)', default='setup,bench,upload')
 parser.add_argument('--executable_spec', type=str, help='name for executable and variant for build in "name:variant" fmt (e.g. flambda:flambda)', default='vanilla:')
 parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
-parser.add_argument('--archive_dir', type=str, help='location to make archive', default=None)
+parser.add_argument('--archive_dir', type=str, help='location to make archive (comma seperated list)', default='')
 parser.add_argument('--upload_project_name', type=str, help='specific upload project name (default is ocaml_<branch name>', default=None)
 parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
 parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
@@ -140,7 +140,14 @@ outdir = os.path.abspath(args.outdir)
 if args.verbose: print('making directory: %s'%outdir)
 shell_exec('mkdir -p %s'%outdir)
 
-archive_dir = os.path.abspath(args.archive_dir) if not args.archive_dir is None else None
+archive_dirs = [] if args.archive_dir == '' else args.archive_dir.split(',')
+archive_dirs = [os.path.abspath(f) for f in archive_dirs]
+def check_archive_dir(d):
+    if not os.path.exists(d):
+        print('ERROR: can only archive to existing locations: %s'%d)
+        return False
+    return True
+archive_dirs = [f for f in archive_dirs if check_archive_dir(f)]
 
 ## generate list of hash commits
 hashes = git_hashes.get_git_hashes(args)
@@ -199,28 +206,29 @@ for h in hashes:
             shell_exec('cd %s; make clean'%sandmark_dir)
 
     if 'archive' in args.run_stages:
-        if (archive_dir is None) or (not os.path.exists(archive_dir)):
-            print('ERROR: could not archive as could not find %s'%archive_dir)
+        if len(archive_dirs) == 0:
+            print('WARN: no archive_dirs to run on (is the --archive_dir argument set?)')
         else:
-            ## figure the archive timestamp
-            archive_logfile, archive_timestamp = use_bench_logfile_to_determine_timestamp(hashdir)
+            for archive_dir in archive_dirs:
+                ## figure the archive timestamp
+                archive_logfile, archive_timestamp = use_bench_logfile_to_determine_timestamp(hashdir)
 
-            archive_path = os.path.join(
-                archive_dir,
-                args.environment, ## environment (often hostname)
-                upload_project_name + '__' + args.branch, ## project name and branch (identifies github repo)
-                h, ## commit hash
-                executable_name, ## name of the executable variant (e.g. vanilla, flambda)
-                archive_timestamp ## timestamp fo the run
-                )
+                archive_path = os.path.join(
+                    archive_dir,
+                    args.environment, ## environment (often hostname)
+                    upload_project_name + '__' + args.branch, ## project name and branch (identifies github repo)
+                    h, ## commit hash
+                    executable_name, ## name of the executable variant (e.g. vanilla, flambda)
+                    archive_timestamp ## timestamp fo the run
+                    )
 
-            if args.verbose:
-                print('writing archive to: %s'%archive_path)
+                if args.verbose:
+                    print('writing archive to: %s'%archive_path)
 
-            ## archive the data
-            shell_exec('mkdir -p %s'%archive_path)
-            shell_exec('cp %s %s'%(archive_logfile, os.path.join(archive_path, os.path.basename(archive_logfile))))
-            shell_exec('cp -r %s/* %s'%(resultsdir, archive_path))
+                ## archive the data
+                shell_exec('mkdir -p %s'%archive_path)
+                shell_exec('cp %s %s'%(archive_logfile, os.path.join(archive_path, os.path.basename(archive_logfile))))
+                shell_exec('cp -r %s/* %s'%(resultsdir, archive_path))
 
     if 'upload' in args.run_stages:
         ## upload
