@@ -1,0 +1,17 @@
+
+scratchdir: "/local/scratch/ctk21/cust" # working location for benchmark runs
+bench_core: "4" # core that the benchmarks will run on
+environment: "bench2.ocamllabs.io" # codespeed environment tag
+exec_spec: "vanilla:" # "<executable>:" defines the codespeed executable tag
+codespeed_url: "http://localhost:8083/" # codespeed location for upload
+ocamlspeed_dir: "/home/ctk21/proj/ocamlspeed_sandmark_custom" # location of ocamlspeed instance
+
+# list of github branches to run benchmarks for
+tracked_branches:
+  - github_user: "kayceesrk" # github username for repo
+    github_repo: "ocaml" # github repo name
+    branch: "closure_rec" # git branch name
+    first_commit: "9618f860e580d8f491d980b9f84d785f1651a3b8" # first commit of interest (all commits after this are executed)
+    ocaml_version: "4.10.0" # ocaml base version for the branch (needed for opam)
+    run_path_tag: "kc1" # short tag for location of run (needs to be small less than ~5 characters)
+    codespeed_name: "kc_closure_rec" # name that will appear in the codespeed front end
