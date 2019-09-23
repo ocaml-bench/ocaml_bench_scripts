@@ -70,6 +70,15 @@ def get_git_hashes(args):
 				hashes.append(h)
 
 
+	elif args.commit_choice_method.startswith('from_hash='):
+		# get commits from this hash forwards
+		first_hash = args.commit_choice_method.split('=')[1]
+
+		proc_output = shell_exec('git log %s^.. %s --pretty=format:\'%%H %%s\' %s'%(first_hash, first_parent, commit_xtra_args), stdout=subprocess.PIPE)
+		all_hashes = proc_output.stdout.decode('utf-8').split('\n')[::-1]
+		all_hashes = filter(bool, all_hashes) # remove empty strings
+		hashes = [hc.split(' ')[0] for hc in all_hashes]
+
 	elif args.commit_choice_method.startswith('hash='):
 		hashes = args.commit_choice_method.split('=')[1]
 		hashes = hashes.split(',')

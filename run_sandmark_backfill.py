@@ -38,6 +38,7 @@ parser.add_argument('--commit_after', type=str, help='select commits after the s
 parser.add_argument('--commit_before', type=str, help='select commits before the specified date (e.g. 2017-10-02)', default=None)
 parser.add_argument('--github_oauth_token', type=str, help='oauth token for github api', default=None)
 parser.add_argument('--max_hashes', type=int, help='maximum_number of hashes to process', default=1000)
+parser.add_argument('--incremental_hashes', action='store_true', default=False)
 parser.add_argument('--sandmark_repo', type=str, help='sandmark repo location', default=SANDMARK_REPO)
 parser.add_argument('--sandmark_comp_fmt', type=str, help='sandmark location format compiler code', default=SANDMARK_COMP_FMT_DEFAULT)
 parser.add_argument('--sandmark_iter', type=int, help='number of sandmark iterations', default=1)
@@ -151,6 +152,16 @@ archive_dirs = [f for f in archive_dirs if check_archive_dir(f)]
 
 ## generate list of hash commits
 hashes = git_hashes.get_git_hashes(args)
+
+if args.incremental_hashes:
+    def check_hash_new(h):
+        hash_dir = os.path.join(outdir, h)
+        hash_already_run = os.path.exists(hash_dir)
+        if args.verbose and hash_already_run:
+            print('Found results at %s skipping rerun'%hash_dir)
+        return not hash_already_run
+
+    hashes = [h for h in hashes if check_hash_new(h)]
 
 if args.verbose:
     print('Found %d hashes using %s to do %s on'%(len(hashes), args.commit_choice_method, args.run_stages))
