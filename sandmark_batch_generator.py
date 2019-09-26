@@ -84,7 +84,7 @@ if [ ! -d ${REPO} ]; then
 fi
 
 ## setup target codespeed db to see project
-sqlite3 ${CODESPEED_DB} "INSERT INTO codespeed_project (name,repo_type,repo_path,repo_user,repo_pass,commit_browsing_url,track,default_branch) SELECT '${CODESPEED_NAME}', 'G', 'https://github.com/${GITHUB_USER}/ocaml', '${GITHUB_USER}', '', 'https://github.com/${GITHUB_USER}/${GITHUB_REPO}/commit/{commitid}',1,'${BRANCH}' WHERE NOT EXISTS(SELECT 1 FROM codespeed_project WHERE name = '${CODESPEED_NAME}')"
+sqlite3 ${CODESPEED_DB} "INSERT INTO codespeed_project (name,repo_type,repo_path,repo_user,repo_pass,commit_browsing_url,track,default_branch) SELECT '${CODESPEED_NAME}', 'G', 'https://github.com/${GITHUB_USER}/${GITHUB_REPO}', '${GITHUB_USER}', '', 'https://github.com/${GITHUB_USER}/${GITHUB_REPO}/commit/{commitid}',1,'${BRANCH}' WHERE NOT EXISTS(SELECT 1 FROM codespeed_project WHERE name = '${CODESPEED_NAME}')"
 
 
 ## run backfill script
