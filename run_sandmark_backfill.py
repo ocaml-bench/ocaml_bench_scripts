@@ -163,6 +163,8 @@ if args.incremental_hashes:
 
     hashes = [h for h in hashes if check_hash_new(h)]
 
+hashes = hashes[-args.max_hashes:]
+
 if args.verbose:
     print('Found %d hashes using %s to do %s on'%(len(hashes), args.commit_choice_method, args.run_stages))
 

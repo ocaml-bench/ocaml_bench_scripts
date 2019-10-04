@@ -82,6 +82,7 @@ shell_exec('mkdir -p %s'%outdir)
 ## generate list of hash commits
 repo_path = os.path.abspath(args.repo)
 hashes = git_hashes.get_git_hashes(args)
+hashes = hashes[-args.max_hashes:]
 
 if args.verbose:
 	print('Found %d hashes using %s to do %s on'%(len(hashes), args.commit_choice_method, args.run_stages))

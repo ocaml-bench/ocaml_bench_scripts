@@ -32,7 +32,7 @@ set -x
 TIMESTAMP=`date +'%Y%m%d_%H%M%S'`
 
 # make sure python log files are in order
-PYTHONUNBUFFERED=true
+export PYTHONUNBUFFERED=true
 
 '''
 
@@ -51,6 +51,7 @@ GITHUB_USER={github_user}
 GITHUB_REPO={github_repo}
 BRANCH={branch}
 FIRST_COMMIT={first_commit}
+MAX_HASHES={max_hashes}
 OCAML_VERSION={ocaml_version}
 RUN_PATH_TAG={run_path_tag}
 CODESPEED_NAME={codespeed_name}
@@ -88,7 +89,7 @@ sqlite3 ${CODESPEED_DB} "INSERT INTO codespeed_project (name,repo_type,repo_path
 
 
 ## run backfill script
-./run_sandmark_backfill.py --run_stages ${RUN_STAGES} --branch ${BRANCH} --main_branch ${BRANCH} --repo ${REPO} --repo_pull --repo_reset_hard --use_repo_reference --incremental_hashes --commit_choice_method from_hash=${FIRST_COMMIT} --executable_spec=${EXEC_SPEC} --environment ${ENVIRONMENT} --sandmark_comp_fmt https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/{tag}.tar.gz --sandmark_tag_override ${OCAML_VERSION} --sandmark_iter 1 --sandmark_pre_exec="'taskset --cpu-list "${BENCH_CORE}" setarch `uname -m` --addr-no-randomize'" --archive_dir ${ARCHIVE_DIR} --codespeed_url ${CODESPEED_URL} --upload_project_name ${CODESPEED_NAME} -v ${RUNDIR}
+./run_sandmark_backfill.py --run_stages ${RUN_STAGES} --branch ${BRANCH} --main_branch ${BRANCH} --repo ${REPO} --repo_pull --repo_reset_hard --use_repo_reference --max_hashes ${MAX_HASHES} --incremental_hashes --commit_choice_method from_hash=${FIRST_COMMIT} --executable_spec=${EXEC_SPEC} --environment ${ENVIRONMENT} --sandmark_comp_fmt https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/{tag}.tar.gz --sandmark_tag_override ${OCAML_VERSION} --sandmark_iter 1 --sandmark_pre_exec="'taskset --cpu-list "${BENCH_CORE}" setarch `uname -m` --addr-no-randomize'" --archive_dir ${ARCHIVE_DIR} --codespeed_url ${CODESPEED_URL} --upload_project_name ${CODESPEED_NAME} -v ${RUNDIR}
 
 
 '''

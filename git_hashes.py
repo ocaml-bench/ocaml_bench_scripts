@@ -117,7 +117,6 @@ def get_git_hashes(args):
 		sys.exit(1)
 
 	hashes = [ h for h in hashes if h ] # filter any null hashes
-	hashes = hashes[-args.max_hashes:]
 
 	os.chdir(old_cwd)
 	return hashes
