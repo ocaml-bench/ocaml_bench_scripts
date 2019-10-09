@@ -21,6 +21,7 @@ DEFAULT_BRANCH = '4.07'
 DEFAULT_MAIN_BRANCH = 'trunk'
 SANDMARK_REPO = os.path.join(SCRIPTDIR, 'sandmark')
 SANDMARK_COMP_FMT_DEFAULT = 'https://github.com/ocaml/ocaml/archive/{tag}.tar.gz'
+SANDMARK_RUN_BENCH_TARGETS_DEFAULT = 'run_orun'
 CODESPEED_URL = 'http://localhost:8000/'
 ENVIRONMENT = 'macbook'
 
@@ -45,6 +46,7 @@ parser.add_argument('--sandmark_iter', type=int, help='number of sandmark iterat
 parser.add_argument('--sandmark_pre_exec', type=str, help='benchmark pre_exec', default='')
 parser.add_argument('--sandmark_no_cleanup', action='store_true', default=False)
 parser.add_argument('--sandmark_tag_override', help='set the sandmark version tag manually (e.g. 4.06.1)', default=None)
+parser.add_argument('--sandmark_run_bench_targets', type=str, help='comma seperated list of RUN_BENCH_TARGET arguments to run in sandmark', default=SANDMARK_RUN_BENCH_TARGETS_DEFAULT)
 parser.add_argument('--run_stages', type=str, help='stages to run (setup,bench,archive,upload)', default='setup,bench,upload')
 parser.add_argument('--executable_spec', type=str, help='name for executable and variant for build in "name:variant" fmt (e.g. flambda:flambda)', default='vanilla:')
 parser.add_argument('--environment', type=str, help='environment tag for run (default: %s)'%ENVIRONMENT, default=ENVIRONMENT)
@@ -70,18 +72,6 @@ def shell_exec_redirect(cmd, fname, verbose=args.verbose, check=False):
         print('+ with stdout/stderr -> %s'% fname)
     with open(fname, 'w') as f:
         return shell_exec(cmd, verbose=False, check=check, stdout=f, stderr=subprocess.STDOUT)
-
-def use_bench_logfile_to_determine_timestamp(hashdir):
-    logfile_candidates = sorted(glob.glob(os.path.join(hashdir, 'bench_*.log')))
-    if len(logfile_candidates) == 0:
-        print('ERROR: could not find bench logfile for run timestamp')
-        return None
-
-    logfile = logfile_candidates[-1]
-    if len(logfile_candidates) > 1:
-        print('WARN: more than one logfile candidate for timestamp, so took last %s'%logfile)
-
-    return logfile, os.path.basename(logfile).lstrip('bench_').rstrip('.log')
 
 def use_bench_result_dirs_to_determine_timestamp(resultdir):
     resultdir_candidates = sorted(glob.glob(os.path.join(resultdir, '[0-9]'*8+'_'+'[0-9]'*6)))
@@ -200,7 +190,6 @@ for h in hashes:
     sandmark_dir = os.path.join(hashdir, 'sandmark')
     sandmark_results_dir = os.path.join(sandmark_dir, '_results')
     resultsdir = os.path.join(hashdir, 'results')
-    result_comp_dir = os.path.join(resultsdir, full_branch_tag)
 
     if 'setup' in args.run_stages:
         if os.path.exists(sandmark_dir):
@@ -216,21 +205,27 @@ for h in hashes:
 
     if 'bench' in args.run_stages:
         ## run bench
-        log_fname = os.path.join(hashdir, 'bench_%s.log'%run_timestamp)
-        completed_proc = shell_exec_redirect('cd %s; make %s.bench ITER=%i PRE_BENCH_EXEC=%s'%(sandmark_dir, version_tag, args.sandmark_iter, args.sandmark_pre_exec), log_fname)
-        if completed_proc.returncode != 0:
-            print('ERROR[%d] in sandmark bench run for %s (see %s)'%(completed_proc.returncode, h, log_fname))
-            ## TODO: the error isn't fatal, just that something failed in there...
-            #continue
+        src_dir = os.path.join(sandmark_results_dir, full_branch_tag)
+        dest_dir = os.path.join(resultsdir, run_timestamp)
+        shell_exec('mkdir -p %s'%dest_dir)
+
+        targets = args.sandmark_run_bench_targets.split(',')
+        for target in targets:
+            if args.verbose:
+                print('Running bench target %s'%target)
+
+            log_fname = os.path.join(hashdir, '%s_%s.log'%(run_timestamp, target))
+            completed_proc = shell_exec_redirect('cd %s; make %s.bench ITER=%i PRE_BENCH_EXEC=%s RUN_BENCH_TARGET=%s'%(sandmark_dir, version_tag, args.sandmark_iter, args.sandmark_pre_exec, target), log_fname)
+            if completed_proc.returncode != 0:
+                print('ERROR[%d] in sandmark bench run for %s (see %s)'%(completed_proc.returncode, h, log_fname))
+                ## TODO: the error isn't fatal, just that something failed in there...
+                #continue
+
+            ## put the logfile into the right result directory
+            shell_exec('cp %s %s/'%(log_fname, dest_dir))
 
         ## copy all result artifacts
-        src_dir = os.path.join(sandmark_results_dir, full_branch_tag)
-        dest_dir = os.path.join(result_comp_dir, run_timestamp)
-        shell_exec('mkdir -p %s'%result_comp_dir)
-        shell_exec('cp -r %s %s'%(src_dir, dest_dir))
-
-        ## put the logfile into the right result directory
-        shell_exec('cp %s %s'%(log_fname, dest_dir))
+        shell_exec('cp -r %s/ %s/'%(src_dir, dest_dir))
 
         ## cleanup sandmark directory
         if not args.sandmark_no_cleanup:
@@ -242,7 +237,7 @@ for h in hashes:
         else:
             for archive_dir in archive_dirs:
                 ## figure the archive timestamp
-                archive_logdir, archive_timestamp = use_bench_result_dirs_to_determine_timestamp(result_comp_dir)
+                archive_logdir, archive_timestamp = use_bench_result_dirs_to_determine_timestamp(resultsdir)
 
                 archive_path = os.path.join(
                     archive_dir,
@@ -258,18 +253,24 @@ for h in hashes:
 
                 ## archive the data
                 shell_exec('mkdir -p %s'%archive_path)
-                shell_exec('cp -r %s/* %s'%(archive_logdir, archive_path))
+                shell_exec('cp -r %s/*.log %s'%(archive_logdir, archive_path))
+                shell_exec('cp -r %s/* %s'%(os.path.join(archive_logdir, full_branch_tag), archive_path))
 
     if 'upload' in args.run_stages:
+        if not 'run_orun' in args.sandmark_run_bench_targets.split(','):
+            print('WARN: not running upload as run_orun not found in sandmark_run_bench_targets')
+            continue
+
         ## upload
         resultdir = os.path.join(hashdir, 'results')
         if args.upload_date_tag:
             upload_timestamp = args.upload_date_tag
+            upload_dir = os.path.join(resultsdir, upload_timestamp)
         else:
             ## figure the upload timestamp
-            upload_dir, upload_timestamp = use_bench_result_dirs_to_determine_timestamp(result_comp_dir)
+            upload_dir, upload_timestamp = use_bench_result_dirs_to_determine_timestamp(resultsdir)
 
-        fname = os.path.join(upload_dir, '%s.bench'%full_branch_tag)
+        fname = os.path.join(upload_dir, full_branch_tag, '%s.orun.bench'%full_branch_tag)
         if not os.path.exists(fname):
             print('ERROR: could not upload as could not find %s'%fname)
             continue
