@@ -83,6 +83,18 @@ def use_bench_logfile_to_determine_timestamp(hashdir):
 
     return logfile, os.path.basename(logfile).lstrip('bench_').rstrip('.log')
 
+def use_bench_result_dirs_to_determine_timestamp(resultdir):
+    resultdir_candidates = sorted(glob.glob(os.path.join(resultdir, '[0-9]'*8+'_'+'[0-9]'*6)))
+    if len(resultdir_candidates) == 0:
+        print('ERROR: could not find bench logfile for run timestamp (resultdir=%s)'%resultdir)
+        return None
+
+    d = resultdir_candidates[-1]
+    if len(resultdir_candidates) > 1:
+        print('WARN: more than one logfile candidate for timestamp, so took last %s'%d)
+
+    return d, os.path.basename(d.rstrip('/'))
+
 def parse_and_format_results_for_upload(fname, artifacts_timestamp):
     bench_data = []
     with open(fname) as f:
@@ -125,7 +137,7 @@ def parse_and_format_results_for_upload(fname, artifacts_timestamp):
             'min': results['min'],
             'max': results['max'],
             'std_dev': results['std'],
-            'metadata': {'artifacts_location': '%s/%s__%s/%s/%s/%s/'%(args.environment, upload_project_name, args.branch, h, executable_name, artifacts_timestamp)},
+            'metadata': {'artifacts_location': '%s/%s__%s/%s/%s/%s/%s/'%(args.environment, upload_project_name, args.branch, h, executable_name, artifacts_timestamp, bench_name)},
             })
 
     return upload_data
@@ -186,7 +198,9 @@ for h in hashes:
         full_branch_tag += '+' + executable_variant
     version_tag = os.path.join('ocaml-versions', full_branch_tag)
     sandmark_dir = os.path.join(hashdir, 'sandmark')
+    sandmark_results_dir = os.path.join(sandmark_dir, '_results')
     resultsdir = os.path.join(hashdir, 'results')
+    result_comp_dir = os.path.join(resultsdir, full_branch_tag)
 
     if 'setup' in args.run_stages:
         if os.path.exists(sandmark_dir):
@@ -209,10 +223,14 @@ for h in hashes:
             ## TODO: the error isn't fatal, just that something failed in there...
             #continue
 
-        ## move results to store them
-        shell_exec('mkdir -p %s'%resultsdir)
-        src_file = os.path.join(sandmark_dir, '%s.bench'%version_tag)
-        shell_exec('cp %s %s'%(src_file, os.path.join(resultsdir, '%s_%s'%(run_timestamp, os.path.basename(src_file)))))
+        ## copy all result artifacts
+        src_dir = os.path.join(sandmark_results_dir, full_branch_tag)
+        dest_dir = os.path.join(result_comp_dir, run_timestamp)
+        shell_exec('mkdir -p %s'%result_comp_dir)
+        shell_exec('cp -r %s %s'%(src_dir, dest_dir))
+
+        ## put the logfile into the right result directory
+        shell_exec('cp %s %s'%(log_fname, dest_dir))
 
         ## cleanup sandmark directory
         if not args.sandmark_no_cleanup:
@@ -224,7 +242,7 @@ for h in hashes:
         else:
             for archive_dir in archive_dirs:
                 ## figure the archive timestamp
-                archive_logfile, archive_timestamp = use_bench_logfile_to_determine_timestamp(hashdir)
+                archive_logdir, archive_timestamp = use_bench_result_dirs_to_determine_timestamp(result_comp_dir)
 
                 archive_path = os.path.join(
                     archive_dir,
@@ -240,8 +258,7 @@ for h in hashes:
 
                 ## archive the data
                 shell_exec('mkdir -p %s'%archive_path)
-                shell_exec('cp %s %s'%(archive_logfile, os.path.join(archive_path, os.path.basename(archive_logfile))))
-                shell_exec('cp -r %s/* %s'%(resultsdir, archive_path))
+                shell_exec('cp -r %s/* %s'%(archive_logdir, archive_path))
 
     if 'upload' in args.run_stages:
         ## upload
@@ -250,9 +267,9 @@ for h in hashes:
             upload_timestamp = args.upload_date_tag
         else:
             ## figure the upload timestamp
-            _, upload_timestamp = use_bench_logfile_to_determine_timestamp(hashdir)
+            upload_dir, upload_timestamp = use_bench_result_dirs_to_determine_timestamp(result_comp_dir)
 
-        fname = os.path.join(resultdir, '%s_%s.bench'%(upload_timestamp, full_branch_tag))
+        fname = os.path.join(upload_dir, '%s.bench'%full_branch_tag)
         if not os.path.exists(fname):
             print('ERROR: could not upload as could not find %s'%fname)
             continue
