@@ -67,6 +67,21 @@ You can schedule tasks to a given cpu with:
 taskset --cpu-list 5 shasum /dev/zero
 ```
 
+While this works properly for programs which spawn a single thread, this fails to work for a program launching multiple threads. This has been documented here [isolcpus_taskset_bug](https://bugzilla.kernel.org/show_bug.cgi?id=116701). As per the Linux kernel devs, `isolcpus` completely removes the cores from the scheduler. Thus the ideal way to work around this is by changing the scheduler for the running process from `SCHED_OTHER` (default) to something else. This can be done via the `chrt` command [chrt_ref](http://man7.org/linux/man-pages/man1/chrt.1.html).
+
+```
+sudo taskset --cpu-list 2-16 chrt -r 1 <name-of-executable>
+```
+
+Note that, this requires sudo. This ensures that the spawned processes are mapped to available hardware cores in your taskset. One point to be careful here is that if you are spawning more threads than hardware cores available, the performance might not be representative, as the scheduler used here is different from the Linux default.
+
+### Removing RCU callbacks
+Read-copy-update is a way to maintain shared data structures which are copied over when modified by one of the owners. In certain cases, this can cause the old copy to be unused and thus can be freed. This freeing process is carried out as part of the interrupt processing routines. Thus, it is possible to inform the kernel to not schedule these routines on the isolated cores. This can be done via the `rcu_nocbs` parameter, similar to `isolcpus`. Kernel command line reference [here](https://www.kernel.org/doc/html/v4.14/admin-guide/kernel-parameters.html). You can read more [here](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/html/tuning_guide/offloading_rcu_callbacks)
+
+Similar to `isolcpus`, we would add `rcu_nocbs=1,2,3,4,5` to `/etc/default/grub` and then run `sudo update-grub` to remove cores 1-5 from having to perform the RCU callback. 
+
+Further, despite cores having offloaded the actual callback, they still have to inform the callback cores to perform the callback. Adding the parameter `rcu_nocb_poll` to the kernel command line, relieves even this from the cores, as the the cores responsible for the callbacks poll for wakeup. 
+
 ### Interrupts
 
 You want to turn off the interrupt balancing and point everything at core 0. A simple way to acheive this is adding `ENABLED=0` to `/etc/default/irqbalance` on Ubuntu. On Ubuntu I found that you needed to still have the irqbalance service running for this to work; that is you need the `ENABLED=0` flag in the config and the service to execute seeing that flag.
@@ -74,9 +89,13 @@ You want to turn off the interrupt balancing and point everything at core 0. A s
 You can check this is working with:
 ```watch cat /proc/interrupts```
 
+Alternatively, you can set the command line parameter `irqaffinity=0,1,13,14` to ensure that interrupts are always routed to these cores. This can be checked as well by `cat /proc/interrupts` and you should see the interrupts on the non-affinity cores to be very low.
+
 ### nohz_full (tickless mode)
 
-I didn't manage to make this work with a stock Ubuntu kernel. You can check it is working with:
+This requires a recompile of the stock kernel. The kernel needs to be compiled with a configuration flag called - `CONF_NO_HZ_FULL` and then the command line param `nohz_full` can be added to `/etc/default/grub`.
+
+You can check if this worked at - 
 ```cat /sys/devices/system/cpu/nohz_full```
 
 ### Setting default pstate to performance
@@ -124,6 +143,8 @@ sudo tlp stat -p
 watch cat /sys/devices/system/cpu/cpu?/cpufreq/scaling_cur_freq
 ```
 
+Alternatively, Certain BIOS'es will also allow you to turn of TurboBoost.
+
 ### ASLR on process runs
 
 Usually processes on linux will have address space layout randomization (ASLR) switched on. You can check if this is the case with
@@ -147,3 +168,8 @@ If you are doing continuous integration style benchmarking with ASLR on, then yo
  - https://blog.phusion.nl/2017/07/13/understanding-your-benchmarks-and-easy-tips-for-fixing-them/
  - Understanding and isolating the noise in the Linux kernel: https://journals.sagepub.com/doi/abs/10.1177/1094342013477892
  - ASLR info: https://linux-audit.com/linux-aslr-and-kernelrandomize_va_space-setting/
+ - isolcpus interaction with taskset - https://bugzilla.kernel.org/show_bug.cgi?id=116701
+ - Offloading RCU callbacks - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/html/tuning_guide/offloading_rcu_callbacks
+
+### References
+  - Kernel command line reference - https://www.kernel.org/doc/html/v4.14/admin-guide/kernel-parameters.html
