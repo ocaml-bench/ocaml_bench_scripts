@@ -52,6 +52,7 @@ GITHUB_USER={github_user}
 GITHUB_REPO={github_repo}
 BRANCH={branch}
 FIRST_COMMIT={first_commit}
+TAG_COMMIT={tag_commit}
 MAX_HASHES={max_hashes}
 OCAML_VERSION={ocaml_version}
 RUN_PATH_TAG={run_path_tag}
@@ -83,15 +84,20 @@ cd $SCRIPTDIR
 REPO=${GITHUB_USER}__${GITHUB_REPO}
 if [ ! -d ${REPO} ]; then
 	git clone https://github.com/${GITHUB_USER}/${GITHUB_REPO}.git ${REPO}
+    if [ ! -z ${TAG_COMMIT} ]; then
+        cd ${REPO}; git reset --hard ${TAG_COMMIT}; cd ${SCRIPTDIR}
+    fi
 fi
 
 ## setup target codespeed db to see project
 sqlite3 ${CODESPEED_DB} "INSERT INTO codespeed_project (name,repo_type,repo_path,repo_user,repo_pass,commit_browsing_url,track,default_branch) SELECT '${CODESPEED_NAME}', 'G', 'https://github.com/${GITHUB_USER}/${GITHUB_REPO}', '${GITHUB_USER}', '', 'https://github.com/${GITHUB_USER}/${GITHUB_REPO}/commit/{commitid}',1,'${BRANCH}' WHERE NOT EXISTS(SELECT 1 FROM codespeed_project WHERE name = '${CODESPEED_NAME}')"
 
-
 ## run backfill script
-./run_sandmark_backfill.py --run_stages ${RUN_STAGES} --branch ${BRANCH} --main_branch ${BRANCH} --repo ${REPO} --repo_pull --repo_reset_hard --use_repo_reference --max_hashes ${MAX_HASHES} --incremental_hashes --commit_choice_method from_hash=${FIRST_COMMIT} --executable_spec=${EXEC_SPEC} --environment ${ENVIRONMENT} --sandmark_comp_fmt https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/{tag}.tar.gz --sandmark_tag_override ${OCAML_VERSION} --sandmark_iter 1 --sandmark_pre_exec="'taskset --cpu-list "${BENCH_CORE}" setarch `uname -m` --addr-no-randomize'" --sandmark_run_bench_targets ${BENCH_TARGETS} --archive_dir ${ARCHIVE_DIR} --codespeed_url ${CODESPEED_URL} --upload_project_name ${CODESPEED_NAME} -v ${RUNDIR}
-
+if [ ! -z ${TAG_COMMIT} ]; then
+    ./run_sandmark_backfill.py --run_stages ${RUN_STAGES} --branch ${BRANCH} --main_branch ${BRANCH} --repo ${REPO} --repo_pull --repo_reset_hard --use_repo_reference --max_hashes ${MAX_HASHES} --incremental_hashes --commit_choice_method from_hash=${FIRST_COMMIT} --executable_spec=${EXEC_SPEC} --environment ${ENVIRONMENT} --sandmark_comp_fmt https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/{tag}.tar.gz --sandmark_tag_override ${OCAML_VERSION} --tag_commit ${TAG_COMMIT} --sandmark_iter 1 --sandmark_pre_exec="'taskset --cpu-list "${BENCH_CORE}" setarch `uname -m` --addr-no-randomize'" --sandmark_run_bench_targets ${BENCH_TARGETS} --archive_dir ${ARCHIVE_DIR} --codespeed_url ${CODESPEED_URL} --upload_project_name ${CODESPEED_NAME} -v ${RUNDIR}
+else
+    ./run_sandmark_backfill.py --run_stages ${RUN_STAGES} --branch ${BRANCH} --main_branch ${BRANCH} --repo ${REPO} --repo_pull --repo_reset_hard --use_repo_reference --max_hashes ${MAX_HASHES} --incremental_hashes --commit_choice_method from_hash=${FIRST_COMMIT} --executable_spec=${EXEC_SPEC} --environment ${ENVIRONMENT} --sandmark_comp_fmt https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/{tag}.tar.gz --sandmark_tag_override ${OCAML_VERSION} --sandmark_iter 1 --sandmark_pre_exec="'taskset --cpu-list "${BENCH_CORE}" setarch `uname -m` --addr-no-randomize'" --sandmark_run_bench_targets ${BENCH_TARGETS} --archive_dir ${ARCHIVE_DIR} --codespeed_url ${CODESPEED_URL} --upload_project_name ${CODESPEED_NAME} -v ${RUNDIR}
+fi
 
 '''
 
