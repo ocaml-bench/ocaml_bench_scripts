@@ -5,7 +5,6 @@ import os
 import subprocess
 import sys
 
-
 def parseISO8601Likedatetime(s):
 	return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S %z")
 
@@ -14,6 +13,22 @@ def get_git_hashes(args):
 		if verbose:
 			print('+ %s'%cmd)
 		return subprocess.run(cmd, shell=True, check=check, stdout=stdout, stderr=stderr)
+
+	def get_major_minor_patch(i):                     # "4.09.2+dev0-2020-03-13"
+		n = i.split('+')[0].split('.')            # ['4', '09', '2']
+		return (int(n[0]), int(n[1]), int(n[2]))  # 4, 9, 2
+
+	def check_ocaml_version_mismatch(user_input, git_hash):
+		proc_output = shell_exec('git show %s:VERSION | head -1' % (git_hash), stdout=subprocess.PIPE)
+		version = proc_output.stdout.decode('utf-8').split('\n')[0]
+
+		major1, minor1, patch1 = get_major_minor_patch(user_input)
+		major2, minor2, patch2 = get_major_minor_patch(version)
+
+		if (major1 == major2) and (minor1 == minor2) and (patch1 == patch2):
+			return True
+		else:
+			return False
 
 	old_cwd = os.getcwd()
 	repo_path = os.path.abspath(args.repo)
@@ -117,6 +132,8 @@ def get_git_hashes(args):
 		sys.exit(1)
 
 	hashes = [ h for h in hashes if h ] # filter any null hashes
+
+	hashes = [h for h in hashes if check_ocaml_version_mismatch(args.sandmark_tag_override, h)]
 
 	os.chdir(old_cwd)
 	return hashes

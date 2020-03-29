@@ -54,7 +54,6 @@ parser.add_argument('--archive_dir', type=str, help='location to make archive (c
 parser.add_argument('--upload_project_name', type=str, help='specific upload project name (default is ocaml_<branch name>', default=None)
 parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
 parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
-parser.add_argument('--tag_commit', type=str, help="use specific tag release only", default=None)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
@@ -153,24 +152,20 @@ def check_archive_dir(d):
     return True
 archive_dirs = [f for f in archive_dirs if check_archive_dir(f)]
 
-hashes = []
+## generate list of hash commits
+hashes = git_hashes.get_git_hashes(args)
 
-if args.tag_commit is None:
-	## generate list of hash commits
-	hashes = git_hashes.get_git_hashes(args)
+if args.incremental_hashes:
+    def check_hash_new(h):
+        hash_dir = os.path.join(outdir, h)
+        hash_already_run = os.path.exists(hash_dir)
+        if args.verbose and hash_already_run:
+            print('Found results at %s skipping rerun'%hash_dir)
+        return not hash_already_run
 
-	if args.incremental_hashes:
-		def check_hash_new(h):
-			hash_dir = os.path.join(outdir, h)
-			hash_already_run = os.path.exists(hash_dir)
-			if args.verbose and hash_already_run:
-				print('Found results at %s skipping rerun'%hash_dir)
-				return not hash_already_run
+    hashes = [h for h in hashes if check_hash_new(h)]
 
-	hashes = [h for h in hashes if check_hash_new(h)]
-	hashes = hashes[-args.max_hashes:]
-else:
-	hashes = [args.tag_commit]
+hashes = hashes[-args.max_hashes:]
 
 if args.verbose:
     print('Found %d hashes using %s to do %s on'%(len(hashes), args.commit_choice_method, args.run_stages))
@@ -187,7 +182,7 @@ for h in hashes:
     if args.sandmark_tag_override:
         full_branch_tag = args.sandmark_tag_override
     else:
-        ## TODO: we need to somehow get the '.0' more correctly
+	## TODO: we need to somehow get the '.0' more correctly
         full_branch_tag = '%s.0'%args.branch
     if executable_variant:
         full_branch_tag += '+' + executable_variant
