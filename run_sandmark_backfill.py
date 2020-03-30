@@ -132,6 +132,15 @@ def parse_and_format_results_for_upload(fname, artifacts_timestamp):
 
     return upload_data
 
+def find_ocaml_version(args, h):
+    old_cwd = os.getcwd()
+    repo_url = args.sandmark_comp_fmt.split('/')
+    user_repo = repo_url[3] + '__' +  repo_url[4] # ocaml__ocaml
+    source_dir = os.path.join(os.path.abspath(SCRIPTDIR), user_repo)
+    os.chdir(source_dir)
+    proc_output = shell_exec('git show %s:VERSION | head -1' % (h), stdout=subprocess.PIPE)
+    os.chdir(old_cwd)
+    return proc_output.stdout.decode('utf-8').split('\n')[0]
 
 run_timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -182,8 +191,7 @@ for h in hashes:
     if args.sandmark_tag_override:
         full_branch_tag = args.sandmark_tag_override
     else:
-	## TODO: we need to somehow get the '.0' more correctly
-        full_branch_tag = '%s.0'%args.branch
+        full_branch_tag = find_ocaml_version(args, h)
     if executable_variant:
         full_branch_tag += '+' + executable_variant
     version_tag = os.path.join('ocaml-versions', full_branch_tag)

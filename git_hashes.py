@@ -133,7 +133,8 @@ def get_git_hashes(args):
 
 	hashes = [ h for h in hashes if h ] # filter any null hashes
 
-	hashes = [h for h in hashes if check_ocaml_version_mismatch(args.sandmark_tag_override, h)]
+	if args.sandmark_tag_override:
+		hashes = [h for h in hashes if check_ocaml_version_mismatch(args.sandmark_tag_override, h)]
 
 	os.chdir(old_cwd)
 	return hashes
