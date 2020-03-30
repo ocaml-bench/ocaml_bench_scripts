@@ -50,12 +50,20 @@ def check_unique_keys(conf, key):
     if len(data) != 0:
         print('Duplicate %s entries exist in %s' % (key, data))
 
+def check_run_path_tag_length(conf):
+    """ Check run_path_tag is at most five characters """
+    for entry in conf['tracked_branches']:
+        if len(entry['run_path_tag']) > 5:
+            print('run_path_tag %s is greater than five characters!' %
+                  (entry['run_path_tag']))
+
 def validate(conf):
     """ The list of validation checks to be performed """
     check_branch_commit_exists(conf)
     check_ocaml_version(conf)
     check_unique_keys(conf, 'run_path_tag')
     check_unique_keys(conf, 'codespeed_name')
+    check_run_path_tag_length(conf)
 
 def main():
     """ The main function """
