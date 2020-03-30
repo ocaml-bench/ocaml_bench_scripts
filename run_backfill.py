@@ -47,6 +47,7 @@ parser.add_argument('-j', '--jobs', type=int, help='number of concurrent jobs du
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
+args.sandmark_tag_override = None
 
 def shell_exec(cmd, verbose=args.verbose, check=False, stdout=None, stderr=None):
 	if verbose:
