@@ -205,11 +205,12 @@ for h in hashes:
         else:
             ## setup sandmark (make a clone and change the hash)
             shell_exec('git clone --reference %s %s %s'%(args.sandmark_repo, args.sandmark_repo, sandmark_dir))
-            comp_file = os.path.join(sandmark_dir, '%s.comp'%version_tag)
+            comp_file = os.path.join(sandmark_dir, '%s.json' % version_tag)
+            json_url = {'url': args.sandmark_comp_fmt.format(**{'tag': h})}
             if args.verbose:
                 print('writing hash information to: %s'%comp_file)
             with open(comp_file, 'w') as f:
-                f.write(args.sandmark_comp_fmt.format(**{'tag': h}))
+                json.dump(json_url, f)
 
     if 'bench' in args.run_stages:
         ## run bench
