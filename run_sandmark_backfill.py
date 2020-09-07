@@ -53,6 +53,8 @@ parser.add_argument('--environment', type=str, help='environment tag for run (de
 parser.add_argument('--archive_dir', type=str, help='location to make archive (comma seperated list)', default='')
 parser.add_argument('--upload_project_name', type=str, help='specific upload project name (default is ocaml_<branch name>', default=None)
 parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
+parser.add_argument('--configure_options', type=str, help='configure options to compiler', default='')
+parser.add_argument('--ocamlrunparam', type=str, help='OCAMLRUNPARAM', default='')
 parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
@@ -205,11 +207,15 @@ for h in hashes:
         else:
             ## setup sandmark (make a clone and change the hash)
             shell_exec('git clone --reference %s %s %s'%(args.sandmark_repo, args.sandmark_repo, sandmark_dir))
-            comp_file = os.path.join(sandmark_dir, '%s.comp'%version_tag)
+            comp_file = os.path.join(sandmark_dir, '%s.json'%version_tag)
+            json_contents = {
+                'url': args.sandmark_comp_fmt.format(**{'tag': h}),
+                'configure': args.configure_options,
+                'runparams' : args.ocamlrunparam }
             if args.verbose:
                 print('writing hash information to: %s'%comp_file)
             with open(comp_file, 'w') as f:
-                f.write(args.sandmark_comp_fmt.format(**{'tag': h}))
+                json.dump(json_contents, f)
 
     if 'bench' in args.run_stages:
         ## run bench
