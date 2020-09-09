@@ -8,6 +8,11 @@ import os
 import subprocess
 import yaml
 
+from collections import defaultdict
+class SafeDict(dict):
+    def __missing__(self, key):
+        return ''
+
 def get_script_dir():
     return os.path.dirname(inspect.getabsfile(get_script_dir))
 
@@ -19,7 +24,6 @@ parser.add_argument('outdir', type=str, help='directory of output')
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
 args = parser.parse_args()
-
 
 SCRIPT_PREAMBLE = '''#!/bin/sh
 
@@ -55,6 +59,8 @@ FIRST_COMMIT={first_commit}
 MAX_HASHES={max_hashes}
 OCAML_VERSION={ocaml_version}
 RUN_PATH_TAG={run_path_tag}
+CONFIGURE_OPTIONS="{configure_options}"
+OCAMLRUNPARAM="{ocamlrunparam}"
 CODESPEED_NAME={codespeed_name}
 
 '''
@@ -89,7 +95,7 @@ fi
 sqlite3 ${CODESPEED_DB} "INSERT INTO codespeed_project (name,repo_type,repo_path,repo_user,repo_pass,commit_browsing_url,track,default_branch) SELECT '${CODESPEED_NAME}', 'G', 'https://github.com/${GITHUB_USER}/${GITHUB_REPO}', '${GITHUB_USER}', '', 'https://github.com/${GITHUB_USER}/${GITHUB_REPO}/commit/{commitid}',1,'${BRANCH}' WHERE NOT EXISTS(SELECT 1 FROM codespeed_project WHERE name = '${CODESPEED_NAME}')"
 
 ## run backfill script
-./run_sandmark_backfill.py --run_stages ${RUN_STAGES} --branch ${BRANCH} --main_branch ${BRANCH} --repo ${REPO} --repo_pull --repo_reset_hard --use_repo_reference --max_hashes ${MAX_HASHES} --incremental_hashes --commit_choice_method from_hash=${FIRST_COMMIT} --executable_spec=${EXEC_SPEC} --environment ${ENVIRONMENT} --sandmark_comp_fmt https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/{tag}.tar.gz --sandmark_tag_override ${OCAML_VERSION} --sandmark_iter 1 --sandmark_pre_exec="'taskset --cpu-list "${BENCH_CORE}" setarch `uname -m` --addr-no-randomize'" --sandmark_run_bench_targets ${BENCH_TARGETS} --archive_dir ${ARCHIVE_DIR} --codespeed_url ${CODESPEED_URL} --upload_project_name ${CODESPEED_NAME} -v ${RUNDIR}
+./run_sandmark_backfill.py --run_stages ${RUN_STAGES} --branch ${BRANCH} --main_branch ${BRANCH} --repo ${REPO} --repo_pull --repo_reset_hard --use_repo_reference --max_hashes ${MAX_HASHES} --incremental_hashes --commit_choice_method from_hash=${FIRST_COMMIT} --executable_spec=${EXEC_SPEC} --environment ${ENVIRONMENT} --sandmark_comp_fmt https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/{tag}.tar.gz --sandmark_tag_override ${OCAML_VERSION} --sandmark_iter 1 --sandmark_pre_exec="'taskset --cpu-list "${BENCH_CORE}" setarch `uname -m` --addr-no-randomize'" --sandmark_run_bench_targets ${BENCH_TARGETS} --archive_dir ${ARCHIVE_DIR} --codespeed_url ${CODESPEED_URL} --configure_options="${CONFIGURE_OPTIONS}" --ocamlrunparam="${OCAMLRUNPARAM}" --upload_project_name ${CODESPEED_NAME} -v ${RUNDIR}
 
 '''
 
@@ -120,7 +126,7 @@ for run_conf in conf['tracked_branches']:
 	fname = os.path.join(outdir, '%s.sh'%run_conf['codespeed_name'])
 	with open(fname, 'w') as outfile:
 		outfile.write(SCRIPT_PREAMBLE)
-		conf_str = SCRIPT_PARAMS.format(**{**global_conf, **conf, **run_conf})
+		conf_str = SCRIPT_PARAMS.format_map(SafeDict(**{**global_conf, **conf, **run_conf}))
 		outfile.write(conf_str)
 		outfile.write(SCRIPT_BODY)
 	shell_exec('chmod +x %s'%fname)
