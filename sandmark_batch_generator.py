@@ -46,10 +46,12 @@ SCRATCHDIR={scratchdir}
 
 BENCH_TARGETS={bench_targets}
 BENCH_CORE={bench_core}
+BUILD_BENCH_TARGET={build_bench_target}
 ENVIRONMENT={environment}
 EXEC_SPEC={exec_spec}
 CODESPEED_URL={codespeed_url}
 CODESPEED_DB={ocamlspeed_dir}/data/data.db
+RUN_JSON={run_json}
 ARCHIVE_DIR={ocamlspeed_dir}/artifacts/
 
 GITHUB_USER={github_user}
@@ -95,7 +97,7 @@ fi
 sqlite3 ${CODESPEED_DB} "INSERT INTO codespeed_project (name,repo_type,repo_path,repo_user,repo_pass,commit_browsing_url,track,default_branch) SELECT '${CODESPEED_NAME}', 'G', 'https://github.com/${GITHUB_USER}/${GITHUB_REPO}', '${GITHUB_USER}', '', 'https://github.com/${GITHUB_USER}/${GITHUB_REPO}/commit/{commitid}',1,'${BRANCH}' WHERE NOT EXISTS(SELECT 1 FROM codespeed_project WHERE name = '${CODESPEED_NAME}')"
 
 ## run backfill script
-./run_sandmark_backfill.py --run_stages ${RUN_STAGES} --branch ${BRANCH} --main_branch ${BRANCH} --repo ${REPO} --repo_pull --repo_reset_hard --use_repo_reference --max_hashes ${MAX_HASHES} --incremental_hashes --commit_choice_method from_hash=${FIRST_COMMIT} --executable_spec=${EXEC_SPEC} --environment ${ENVIRONMENT} --sandmark_comp_fmt https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/{tag}.tar.gz --sandmark_tag_override ${OCAML_VERSION} --sandmark_iter 1 --sandmark_pre_exec="'taskset --cpu-list "${BENCH_CORE}" setarch `uname -m` --addr-no-randomize'" --sandmark_run_bench_targets ${BENCH_TARGETS} --archive_dir ${ARCHIVE_DIR} --codespeed_url ${CODESPEED_URL} --configure_options="${CONFIGURE_OPTIONS}" --ocamlrunparam="${OCAMLRUNPARAM}" --upload_project_name ${CODESPEED_NAME} -v ${RUNDIR}
+./run_sandmark_backfill.py --run_stages ${RUN_STAGES} --branch ${BRANCH} --main_branch ${BRANCH} --repo ${REPO} --repo_pull --repo_reset_hard --use_repo_reference --max_hashes ${MAX_HASHES} --incremental_hashes --commit_choice_method from_hash=${FIRST_COMMIT} --executable_spec=${EXEC_SPEC} --environment ${ENVIRONMENT} --sandmark_comp_fmt https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/{tag}.tar.gz --sandmark_tag_override ${OCAML_VERSION} --sandmark_iter 1 --sandmark_pre_exec="'taskset --cpu-list "${BENCH_CORE}" setarch `uname -m` --addr-no-randomize'" --sandmark_run_bench_targets ${BENCH_TARGETS} --archive_dir ${ARCHIVE_DIR} --codespeed_url ${CODESPEED_URL} --configure_options="${CONFIGURE_OPTIONS}" --ocamlrunparam="${OCAMLRUNPARAM}" --run_json ${RUN_JSON} --build_bench_target ${BUILD_BENCH_TARGET} --upload_project_name ${CODESPEED_NAME} -v ${RUNDIR}
 
 '''
 
