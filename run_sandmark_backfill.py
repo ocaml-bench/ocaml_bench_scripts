@@ -22,6 +22,8 @@ DEFAULT_MAIN_BRANCH = 'trunk'
 SANDMARK_REPO = os.path.join(SCRIPTDIR, 'sandmark')
 SANDMARK_COMP_FMT_DEFAULT = 'https://github.com/ocaml/ocaml/archive/{tag}.tar.gz'
 SANDMARK_RUN_BENCH_TARGETS_DEFAULT = 'run_orun'
+SANDMARK_RUN_JSON_DEFAULT = 'run_config.json'
+SANDMARK_BUILD_BENCH_TARGET_DEFAULT = 'buildbench'
 CODESPEED_URL = 'http://localhost:8000/'
 ENVIRONMENT = 'macbook'
 
@@ -55,6 +57,8 @@ parser.add_argument('--upload_project_name', type=str, help='specific upload pro
 parser.add_argument('--upload_date_tag', type=str, help='specific date tag to upload', default=None)
 parser.add_argument('--configure_options', type=str, help='configure options to compiler', default='')
 parser.add_argument('--ocamlrunparam', type=str, help='OCAMLRUNPARAM', default='')
+parser.add_argument('--run_json', type=str, help='Run JSON', default=SANDMARK_RUN_JSON_DEFAULT)
+parser.add_argument('--build_bench_target', type=str, help='Build Bench Target', default=SANDMARK_BUILD_BENCH_TARGET_DEFAULT)
 parser.add_argument('--codespeed_url', type=str, help='codespeed URL for upload', default=CODESPEED_URL)
 parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
@@ -216,6 +220,8 @@ for h in hashes:
                 print('writing hash information to: %s'%comp_file)
             with open(comp_file, 'w') as f:
                 json.dump(json_contents, f)
+        if args.run_json:
+                shell_exec('cd %s; make %s'%(sandmark_dir, args.run_json))
 
     if 'bench' in args.run_stages:
         ## run bench
@@ -229,7 +235,7 @@ for h in hashes:
                 print('Running bench target %s'%target)
 
             log_fname = os.path.join(hashdir, '%s_%s.log'%(run_timestamp, target))
-            completed_proc = shell_exec_redirect('cd %s; make %s.bench ITER=%i PRE_BENCH_EXEC=%s RUN_BENCH_TARGET=%s'%(sandmark_dir, version_tag, args.sandmark_iter, args.sandmark_pre_exec, target), log_fname)
+            completed_proc = shell_exec_redirect('cd %s; make %s.bench ITER=%i PRE_BENCH_EXEC=%s RUN_BENCH_TARGET=%s BUILD_BENCH_TARGET=%s RUN_CONFIG_JSON=%s'%(sandmark_dir, version_tag, args.sandmark_iter, args.sandmark_pre_exec, target, args.build_bench_target, args.run_json), log_fname)
             if completed_proc.returncode != 0:
                 print('ERROR[%d] in sandmark bench run for %s (see %s)'%(completed_proc.returncode, h, log_fname))
                 ## TODO: the error isn't fatal, just that something failed in there...
